@@ -23,8 +23,8 @@ static bool is_whitespace(wchar_t ch) {
     }
 }
 
-// treats CRLF as two newlines
-static bool is_newline(wchar_t ch) {
+// treats CRLF as two breaks
+static bool is_break(wchar_t ch) {
     switch (ch) {
     case 0x000A:
     case 0x000C:
@@ -32,6 +32,7 @@ static bool is_newline(wchar_t ch) {
     case 0x0085:
     case 0x2028:
     case 0x2029:
+    case L';':
         return true;
 
     default:
@@ -54,14 +55,17 @@ static kdl_tokenizer_state_e find_next_state(kdl_tokenizer_t *tzr, wchar_t ch) {
     kdl_tokenizer_state_e next_state = tzr->state;
 
     switch (tzr->state) {
-    case KDL_SEQ_NEWLINE:
+    case KDL_SEQ_BREAK:
         next_state = KDL_SEQ_WHITESPACE;
+
+        tzr->save_break = 1;
+        tzr->token_break = 1;
 
         /* fallthru */
     case KDL_SEQ_WHITESPACE:
         if (!is_whitespace(ch)) {
-            if (is_newline(ch))
-                next_state = KDL_SEQ_NEWLINE;
+            if (is_break(ch))
+                next_state = KDL_SEQ_BREAK;
             else if (ch == L'"')
                 next_state = KDL_SEQ_STRING;
             else
@@ -75,8 +79,8 @@ static kdl_tokenizer_state_e find_next_state(kdl_tokenizer_t *tzr, wchar_t ch) {
             next_state = KDL_SEQ_WHITESPACE;
 
             tzr->token_break = 1;
-        } else if (is_newline(ch)) {
-            next_state = KDL_SEQ_NEWLINE;
+        } else if (is_break(ch)) {
+            next_state = KDL_SEQ_BREAK;
 
             tzr->token_break = 1;
         } else if (ch == L'"') {
@@ -120,8 +124,8 @@ static kdl_tokenizer_state_e find_next_state(kdl_tokenizer_t *tzr, wchar_t ch) {
 
         break;
     case KDL_SEQ_CPP_COMM:
-        if (is_newline(ch))
-            next_state = KDL_SEQ_NEWLINE;
+        if (is_break(ch))
+            next_state = KDL_SEQ_BREAK;
 
         break;
     case KDL_SEQ_C_COMM:
@@ -157,6 +161,8 @@ static kdl_tokenizer_state_e find_next_state(kdl_tokenizer_t *tzr, wchar_t ch) {
 
 // act on flags set from previous process calls before finding next state
 static void act_on_previous_state(kdl_tokenizer_t *tzr) {
+    tzr->save_break = 0;
+
     if (tzr->token_break) {
         tzr->token_break = 0;
         tzr->len_token = 0;
@@ -170,7 +176,7 @@ static void act_on_previous_state(kdl_tokenizer_t *tzr) {
 
 static kdl_token_type_e detect_token_type(kdl_tokenizer_t *tzr) {
     switch (tzr->state) {
-    case KDL_SEQ_NEWLINE:
+    case KDL_SEQ_BREAK:
         return KDL_TOK_BREAK;
 
     case KDL_SEQ_CHARACTER:
@@ -191,7 +197,7 @@ static kdl_token_type_e detect_token_type(kdl_tokenizer_t *tzr) {
 
     default:
         KDL_ERROR(
-            "attempted to detect type of token after tzr->state %s\n",
+            "attempted to detect type of token after %s\n",
             TOKENIZER_STATES[tzr->state]
         );
 
@@ -224,6 +230,9 @@ static void act_on_state(
     // save tokens if called for
     if (tzr->save_token)
         tzr->token[tzr->len_token++] = ch;
+
+    if (tzr->save_break)
+        tzr->token[tzr->len_token++] = L';';
 
     // detect token type once broken
     if (tzr->token_break)

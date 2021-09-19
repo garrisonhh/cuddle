@@ -26,7 +26,7 @@
 
 #define KDL_TOKENIZER_STATES_X\
     X(KDL_SEQ_WHITESPACE),\
-    X(KDL_SEQ_NEWLINE),\
+    X(KDL_SEQ_BREAK),\
     X(KDL_SEQ_EOF),\
     X(KDL_SEQ_C_COMM),\
     X(KDL_SEQ_CPP_COMM),\
@@ -56,10 +56,11 @@ typedef struct kdl_tokenizer {
     // tokenizer state
     kdl_tokenizer_state_e state;
     unsigned token_break: 1; // whenever a token is completed
+    unsigned reset_index: 1; // set index to 0 on next process_char()
     unsigned check_comm: 1; // when a '/' character is found
     unsigned str_escape: 1; // when a '\' is found in a string 
     unsigned save_token: 1; // when state saves tokens
-    unsigned reset_index: 1; // reset index on next process_char()
+    unsigned save_break: 1; // breaks always save a ';' character
 } kdl_tokenizer_t;
 
 // just zero-inits the tokenizer
