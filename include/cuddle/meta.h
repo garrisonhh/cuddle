@@ -29,10 +29,4 @@
 
 #define KDL_UNIMPL(...) KDL_ERROR("unimplemented: " __VA_ARGS__)
 
-/*
- * basic macros
- */
-
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
 #endif

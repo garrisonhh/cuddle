@@ -1,17 +1,10 @@
 #include <cuddle/meta.h>
 #include <cuddle/tokens.h>
 
-const char TZR_STATES[][20] = {
-    "whitespace",
-    "character",
-    "newline",
-    "eof",
-    "c_comm",
-    "cpp_comm",
-    "sd_comm",
-    "raw_string",
-    "string"
-};
+#define X(value) #value
+const char TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
+const char TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
+#undef X
 
 static bool is_whitespace(wchar_t ch) {
     switch (ch) {
@@ -51,22 +44,13 @@ static inline wchar_t last_char(kdl_tokenizer_t *tzr) {
     return tzr->len_token > 0 ? tzr->token[tzr->len_token - 1] : L'\0';
 }
 
-static void detect_token_type(kdl_tokenizer_t *tzr) {
-    // TODO
-}
-
-static void process_char(kdl_tokenizer_t *tzr, wchar_t ch) {
-    if (tzr->token_break) {
-        tzr->token_break = 0;
-        tzr->len_token = 0;
-    }
-
-    if (tzr->reset_index) {
-        tzr->reset_index = 0;
-        tzr->len_token = 0;
-    }
-
-    // determine next state
+/*
+ * TODO this function is kind of a behemoth, I'm now realizing I unintentionally
+ * gave it 2 responsibilities: finding the next state, and setting flags based
+ * on that state. splitting these responsibilities up would significantly
+ * simplify it
+ */
+static kdl_tokenizer_state_e find_next_state(kdl_tokenizer_t *tzr, wchar_t ch) {
     kdl_tokenizer_state_e next_state = tzr->state;
 
     switch (tzr->state) {
@@ -162,14 +146,64 @@ static void process_char(kdl_tokenizer_t *tzr, wchar_t ch) {
 
         break;
     default:
-        KDL_UNIMPL("unhandled tokenizer state! (%s)\n", TZR_STATES[tzr->state]);
-
-        break;
+        KDL_UNIMPL(
+            "unhandled tokenizer state %s\n",
+            TOKENIZER_STATES[tzr->state]
+        );
     }
 
-    // token transitions
+    return next_state;
+}
+
+// act on flags set from previous process calls before finding next state
+static void act_on_previous_state(kdl_tokenizer_t *tzr) {
+    if (tzr->token_break) {
+        tzr->token_break = 0;
+        tzr->len_token = 0;
+    }
+
+    if (tzr->reset_index) {
+        tzr->reset_index = 0;
+        tzr->len_token = 0;
+    }
+}
+
+static kdl_token_type_e detect_token_type(kdl_tokenizer_t *tzr) {
+    switch (tzr->state) {
+    case KDL_SEQ_NEWLINE:
+        return KDL_TOK_BREAK;
+
+    case KDL_SEQ_CHARACTER:
+        if (tzr->len_token == 1) {
+            if (tzr->token[0] == L'{')
+                return KDL_TOK_CHILD_BEGIN;
+            else if (tzr->token[0] == L'}')
+                return KDL_TOK_CHILD_END;
+        }
+
+        return KDL_TOK_NODE;
+
+    case KDL_SEQ_STRING:
+        return KDL_TOK_STRING;
+
+    case KDL_SEQ_RAW_STRING:
+        return KDL_TOK_RAW_STRING;
+
+    default:
+        KDL_ERROR(
+            "attempted to detect type of token after tzr->state %s\n",
+            TOKENIZER_STATES[tzr->state]
+        );
+
+    }
+}
+
+// after finding next state, set flags
+static void act_on_state(
+    kdl_tokenizer_t *tzr, wchar_t ch, kdl_tokenizer_state_e next_state
+) {
+    // token transition flags
     if (next_state != tzr->state) {
-        // modify flags
         switch (next_state) {
         case KDL_SEQ_RAW_STRING:
         case KDL_SEQ_STRING:
@@ -187,19 +221,29 @@ static void process_char(kdl_tokenizer_t *tzr, wchar_t ch) {
         }
     }
 
-    // save tokens
+    // save tokens if called for
     if (tzr->save_token)
         tzr->token[tzr->len_token++] = ch;
 
-    // apply token expectations
-    ;
+    // detect token type once broken
+    if (tzr->token_break)
+        tzr->token_type = detect_token_type(tzr);
+}
 
-#if 0
+static void process_char(kdl_tokenizer_t *tzr, wchar_t ch) {
+    kdl_tokenizer_state_e next_state;
+
+    // keep that state machine rolling
+    act_on_previous_state(tzr);
+    next_state = find_next_state(tzr, ch);
+    act_on_state(tzr, ch, next_state);
+
     // debugging
+#if 0
     if (tzr->state != next_state) {
         wprintf(
             L"\'%lc\' %hs -> %hs\n",
-            ch, TZR_STATES[tzr->state], TZR_STATES[next_state]
+            ch, TOKENIZER_STATES[tzr->state], TOKENIZER_STATES[next_state]
         );
     }
 #endif
@@ -207,7 +251,8 @@ static void process_char(kdl_tokenizer_t *tzr, wchar_t ch) {
 #if 1
     if (tzr->token_break) {
         tzr->token[tzr->len_token] = L'\0';
-        wprintf(L"TOKEN |%ls|\n", tzr->token);
+        wprintf(L"%-32s|%ls|\n", TOKEN_TYPES[tzr->token_type], tzr->token);
+        fflush(stdout);
     }
 #endif
 
