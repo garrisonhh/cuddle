@@ -4,6 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/*
+ * debugging, errors, etc.
+ */
+
 #ifdef KDL_DEBUG_INFO
 #define KDL_DEBUG(...) printf(__VA_ARGS__)
 #else
@@ -24,5 +28,11 @@
     } while (0)
 
 #define KDL_UNIMPL(...) KDL_ERROR("unimplemented: " __VA_ARGS__)
+
+/*
+ * basic macros
+ */
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #endif
