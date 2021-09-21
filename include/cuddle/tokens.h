@@ -10,17 +10,17 @@
 #endif
 
 #define KDL_TOKEN_TYPES_X\
-    X(KDL_TOK_UNIDENTIFIED),\
-    X(KDL_TOK_BREAK),\
-    X(KDL_TOK_NODE),\
-    X(KDL_TOK_PROPERTY),\
+    X(KDL_TOK_NODE_ID),\
+    X(KDL_TOK_PROP_ID),\
     X(KDL_TOK_CHILD_BEGIN),\
     X(KDL_TOK_CHILD_END),\
     X(KDL_TOK_STRING),\
-    X(KDL_TOK_RAW_STRING),\
     X(KDL_TOK_NUMBER),\
     X(KDL_TOK_BOOL),\
     X(KDL_TOK_NULL)
+
+#define KDL_TOKEN_EXPECT_X\
+    X(),\
 
 /*
  * table of (name, stores_data)
@@ -62,12 +62,17 @@ typedef struct kdl_tokenizer {
     wchar_t buf[KDL_TOKEN_BUFFER];
     size_t buf_len;
 
-    // state
+    // parsing state
     wchar_t last_chars[2]; // used for detecting char sequences
     kdl_tokenizer_state_e state;
 
-    unsigned token_break: 1;
-    unsigned node_break: 1;
+    unsigned token_break: 1; // true at end of token
+    unsigned node_break: 1; // true at end of line (escapes are handled later!!)
+    unsigned prop_name: 1; // true if token is a prop name
+    unsigned: 0;
+
+    // token typing state
+    unsigned discard_break: 1;
 } kdl_tokenizer_t;
 
 typedef struct kdl_token {
