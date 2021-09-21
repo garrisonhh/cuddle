@@ -20,7 +20,9 @@
     X(KDL_TOK_NULL)
 
 #define KDL_TOKEN_EXPECT_X\
-    X(),\
+    X(KDL_EXP_NODE_ID),\
+    X(KDL_EXP_ATTRIBUTE /* arg, prop, or child_begin */),\
+    X(KDL_EXP_PROP_VALUE)
 
 /*
  * table of (name, stores_data)
@@ -45,6 +47,10 @@
 typedef enum kdl_token_type {
     KDL_TOKEN_TYPES_X
 } kdl_token_type_e;
+
+typedef enum kdl_token_expect {
+    KDL_TOKEN_EXPECT_X
+} kdl_token_expect_e;
 #undef X
 
 #define X(name, stores_data) name
@@ -72,6 +78,8 @@ typedef struct kdl_tokenizer {
     unsigned: 0;
 
     // token typing state
+    kdl_token_expect_e expects;
+
     unsigned discard_break: 1;
 } kdl_tokenizer_t;
 
@@ -79,9 +87,9 @@ typedef struct kdl_token {
     kdl_token_type_e type;
 
     union kdl_token_data {
-        wchar_t str[KDL_TOKEN_BUFFER];
-        double num;
-        bool _bool;
+        wchar_t string[KDL_TOKEN_BUFFER];
+        double number;
+        bool boolean;
     } data;
 } kdl_token_t;
 

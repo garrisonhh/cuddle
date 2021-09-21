@@ -13,6 +13,12 @@ const char TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 const bool TOKENIZER_STATE_STORES[] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
+void kdl_tokenizer_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
+    tzr->data = data;
+    tzr->data_len = length;
+    tzr->data_idx = 0;
+}
+
 static bool is_whitespace(wchar_t ch) {
     switch (ch) {
     case 0x0009:
@@ -173,29 +179,55 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     tzr->last_chars[1] = ch;
 }
 
-void kdl_tokenizer_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
-    tzr->data = data;
-    tzr->data_len = length;
-    tzr->data_idx = 0;
+static inline bool is_slashdashed(kdl_tokenizer_t *tzr) {
+    return tzr->buf_len >= 2 && tzr->buf[0] == L'/' && tzr->buf[1] == L'-';
 }
 
+// types and parses individual tokens
+static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    ;
+}
+
+/*
+ * fills in 'token' with data of next token and returns true, or returns false
+ * if the current token isn't finished yet. this lets you use the idiom:
+ *
+ * while (next_token()) { [ do something with token... ] }
+ *
+ * this functions responsibilities are limited to sanitizing the raw token
+ * stream from the state machine (processing line break escapes, slashdashes,
+ * etc.), managing expectations, and returning fully typed and usable tokens.
+ */
 bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len) {
+        // stir the state machine
         consume_char(tzr);
         ++tzr->data_idx;
 
+        // process a new potential token
         if (tzr->token_break) {
-            if (tzr->prop_name) {
-                wprintf(L"|%ls| = ", tzr->buf);
-            } else {
-                wprintf(L"|%ls| ", tzr->buf);
-            }
+            if (tzr->buf_len == 1 && tzr->buf[0] == L'\\') {
+                // escape node break
+                tzr->discard_break = true;
+            } else if (!is_slashdashed(tzr)) {
+                // generate a token
+                generate_token(tzr, token);
 
-            return true;
+                wprintf(L"|%ls| ", tzr->buf);
+
+                return true;
+            }
         }
 
+        // process a node break
         if (tzr->node_break) {
-            wprintf(L"\n");
+            if (tzr->discard_break)
+                tzr->discard_break = false;
+            else {
+                tzr->expects = KDL_EXP_NODE_ID;
+
+                wprintf(L"\n");
+            }
         }
     }
 
