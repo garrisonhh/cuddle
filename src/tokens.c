@@ -69,7 +69,7 @@ void kdl_tokenizer_make(kdl_tokenizer_t *tzr) {
  * machine, it's super important that this function stays as tight as possible.
  */
 static void consume_char(kdl_tokenizer_t *tzr) {
-    wchar_t ch = tzr->data[tzr->data_idx];
+    wchar_t ch = tzr->data[tzr->data_idx++];
 
     // process and reset persistent flags
     if (tzr->token_break) {
@@ -101,6 +101,16 @@ static void consume_char(kdl_tokenizer_t *tzr) {
             next_state = KDL_SEQ_BREAK;
 
         break;
+    case KDL_SEQ_C_COMM:
+        if (ch == L'/' && tzr->last_chars[1] == L'*')
+            next_state = KDL_SEQ_WHITESPACE;
+
+        break;
+    case KDL_SEQ_CPP_COMM:
+        if (is_newline(ch))
+            next_state = KDL_SEQ_WHITESPACE;
+
+        break;
     case KDL_SEQ_STRING:
         if (ch == L'"' && tzr->last_chars[1] != L'\\')
             next_state = KDL_SEQ_WHITESPACE;
@@ -116,13 +126,8 @@ static void consume_char(kdl_tokenizer_t *tzr) {
             next_state = KDL_SEQ_WHITESPACE;
 
         break;
-    case KDL_SEQ_C_COMM:
-        if (ch == L'/' && tzr->last_chars[1] == L'*')
-            next_state = KDL_SEQ_WHITESPACE;
-
-        break;
-    case KDL_SEQ_CPP_COMM:
-        if (is_newline(ch))
+    case KDL_SEQ_ANNOTATION:
+        if (ch == L')')
             next_state = KDL_SEQ_WHITESPACE;
 
         break;
@@ -139,10 +144,14 @@ static void consume_char(kdl_tokenizer_t *tzr) {
             else
                 next_state = KDL_SEQ_STRING;
         } else if (tzr->last_chars[1] == L'/') {
+            // detect comments
             if (ch == L'/')
                 next_state = KDL_SEQ_CPP_COMM;
             else if (ch == L'*')
                 next_state = KDL_SEQ_C_COMM;
+        } else if (ch == L'(') {
+            // type annotations
+            next_state = KDL_SEQ_ANNOTATION;
         }
     } else if (next_state == KDL_SEQ_WHITESPACE && ch == L'=') {
         tzr->prop_name = true;
@@ -185,7 +194,15 @@ static inline bool is_slashdashed(kdl_tokenizer_t *tzr) {
 
 // types and parses individual tokens
 static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    ;
+    // detect token type
+    switch (tzr->state) {
+    case KDL_SEQ_STRING:
+        token->type = KDL_TOK_STRING;
+    }
+
+    // save data
+    // TODO for real
+    wcscpy(token->data.str, tzr->buf);
 }
 
 /*
@@ -200,9 +217,8 @@ static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
  */
 bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len) {
-        // stir the state machine
+        // churn the state machine
         consume_char(tzr);
-        ++tzr->data_idx;
 
         // process a new potential token
         if (tzr->token_break) {
@@ -214,6 +230,22 @@ bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
                 generate_token(tzr, token);
 
                 wprintf(L"|%ls| ", tzr->buf);
+
+                // set next state
+                switch (tzr->expects) {
+                case KDL_EXP_NODE_ID:
+                    tzr->expects = KDL_EXP_ATTRIBUTE;
+
+                    break;
+                case KDL_EXP_ATTRIBUTE:
+                    if (tzr->prop_name)
+                        tzr->expects = KDL_EXP_PROP_VALUE;
+
+                    break;
+                }
+
+                if (tzr->buf_len == 1 && tzr->buf[0] == L'{')
+                    wprintf(L"\n");
 
                 return true;
             }

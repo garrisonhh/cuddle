@@ -41,7 +41,8 @@
     X(KDL_SEQ_CPP_COMM,     0),\
     X(KDL_SEQ_STRING,       1),\
     X(KDL_SEQ_RAW_STR,      1),\
-    X(KDL_SEQ_LONG_RAW_STR, 1)
+    X(KDL_SEQ_LONG_RAW_STR, 1),\
+    X(KDL_SEQ_ANNOTATION,   0)
 
 #define X(name) name
 typedef enum kdl_token_type {
@@ -93,10 +94,8 @@ typedef struct kdl_token {
     } data;
 } kdl_token_t;
 
-// initialize a tokenizer context
 void kdl_tokenizer_make(kdl_tokenizer_t *);
 
-// pass in 
 void kdl_tokenizer_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
 bool kdl_tokenizer_next_token(kdl_tokenizer_t *, kdl_token_t *);
 

@@ -22,7 +22,7 @@ int main() {
     kdl_tokenizer_t tzr;
     kdl_tokenizer_make(&tzr);
 
-    FILE *file = fopen("files/website.kdl", "r");
+    FILE *file = fopen("files/Cargo.kdl", "r");
 
     if (!file) {
         printf("can't open file :(\n");
