@@ -6,7 +6,7 @@
 #include <wchar.h>
 
 #ifndef KDL_TOKEN_BUFFER
-#define KDL_TOKEN_BUFFER (512)
+#define KDL_TOKEN_BUFFER (2048)
 #endif
 
 #define KDL_TOKEN_TYPES_X\
@@ -14,57 +14,77 @@
     X(KDL_TOK_BREAK),\
     X(KDL_TOK_NODE),\
     X(KDL_TOK_PROPERTY),\
-    X(KDL_TOK_ARGUMENT),\
     X(KDL_TOK_CHILD_BEGIN),\
     X(KDL_TOK_CHILD_END),\
     X(KDL_TOK_STRING),\
     X(KDL_TOK_RAW_STRING),\
     X(KDL_TOK_NUMBER),\
-    X(KDL_TOK_TRUE),\
-    X(KDL_TOK_FALSE),\
+    X(KDL_TOK_BOOL),\
     X(KDL_TOK_NULL)
 
+/*
+ * table of (name, stores_data)
+ *
+ * sequences generally alternate between whitespace and character, and then are
+ * dynamically detected to be other types.
+ *
+ * slashdash comments aren't included here because they are detected after
+ * a character sequence token break!
+ */
 #define KDL_TOKENIZER_STATES_X\
-    X(KDL_SEQ_WHITESPACE),\
-    X(KDL_SEQ_BREAK),\
-    X(KDL_SEQ_EOF),\
-    X(KDL_SEQ_C_COMM),\
-    X(KDL_SEQ_CPP_COMM),\
-    X(KDL_SEQ_SD_COMM),\
-    X(KDL_SEQ_CHARACTER),\
-    X(KDL_SEQ_RAW_STRING),\
-    X(KDL_SEQ_STRING)
+    X(KDL_SEQ_WHITESPACE,   0),\
+    X(KDL_SEQ_CHARACTER,    1),\
+    X(KDL_SEQ_BREAK,        0),\
+    X(KDL_SEQ_C_COMM,       0),\
+    X(KDL_SEQ_CPP_COMM,     0),\
+    X(KDL_SEQ_STRING,       1),\
+    X(KDL_SEQ_RAW_STR,      1),\
+    X(KDL_SEQ_LONG_RAW_STR, 1)
 
-#define X(value) value
+#define X(name) name
 typedef enum kdl_token_type {
     KDL_TOKEN_TYPES_X
 } kdl_token_type_e;
+#undef X
 
+#define X(name, stores_data) name
 typedef enum kdl_token_sequence_state {
     KDL_TOKENIZER_STATES_X
 } kdl_tokenizer_state_e;
 #undef X
 
 typedef struct kdl_tokenizer {
-    // tokens are built character by character using this buffer
-    wchar_t token[KDL_TOKEN_BUFFER];
-    size_t len_token;
+    // current data
+    wchar_t *data;
+    size_t data_len, data_idx;
 
-    // token types are determined after breakage
-    kdl_token_type_e token_type;
+    // token buffer
+    wchar_t buf[KDL_TOKEN_BUFFER];
+    size_t buf_len;
 
-    // tokenizer state
+    // state
+    wchar_t last_chars[2]; // used for detecting char sequences
     kdl_tokenizer_state_e state;
-    unsigned token_break: 1; // whenever a token is completed
-    unsigned reset_index: 1; // set index to 0 on next process_char()
-    unsigned check_comm: 1; // when a '/' character is found
-    unsigned str_escape: 1; // when a '\' is found in a string 
-    unsigned save_token: 1; // when state saves tokens
-    unsigned save_break: 1; // breaks always save a ';' character
+
+    unsigned token_break: 1;
+    unsigned node_break: 1;
 } kdl_tokenizer_t;
 
-// just zero-inits the tokenizer
+typedef struct kdl_token {
+    kdl_token_type_e type;
+
+    union kdl_token_data {
+        wchar_t str[KDL_TOKEN_BUFFER];
+        double num;
+        bool _bool;
+    } data;
+} kdl_token_t;
+
+// initialize a tokenizer context
 void kdl_tokenizer_make(kdl_tokenizer_t *);
+
+// pass in 
 void kdl_tokenizer_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
+bool kdl_tokenizer_next_token(kdl_tokenizer_t *, kdl_token_t *);
 
 #endif
