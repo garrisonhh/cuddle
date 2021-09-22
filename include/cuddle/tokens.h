@@ -30,8 +30,7 @@
  * sequences generally alternate between whitespace and character, and then are
  * dynamically detected to be other types.
  *
- * slashdash comments aren't included here because they are detected after
- * a character sequence token break!
+ * slashdash comments are removed in post
  */
 #define KDL_TOKENIZER_STATES_X\
     X(KDL_SEQ_WHITESPACE,   0),\
@@ -60,14 +59,18 @@ typedef enum kdl_token_sequence_state {
 } kdl_tokenizer_state_e;
 #undef X
 
+// stringified enums for error messages, debugging, etc
+extern const char KDL_TOKEN_TYPES[][32];
+extern const char KDL_TOKEN_EXPECTS[][32];
+
 typedef struct kdl_tokenizer {
     // current data
     wchar_t *data;
     size_t data_len, data_idx;
 
     // token buffer
-    wchar_t buf[KDL_TOKEN_BUFFER];
-    size_t buf_len;
+    wchar_t *buf;
+    size_t buf_len; // this is current length, not total memory length
 
     // parsing state
     wchar_t last_chars[2]; // used for detecting char sequences
@@ -87,14 +90,15 @@ typedef struct kdl_tokenizer {
 typedef struct kdl_token {
     kdl_token_type_e type;
 
+    wchar_t *string; // TODO should I store str_len?
     union kdl_token_data {
-        wchar_t string[KDL_TOKEN_BUFFER];
         double number;
         bool boolean;
     } data;
 } kdl_token_t;
 
-void kdl_tokenizer_make(kdl_tokenizer_t *);
+void kdl_tokenizer_make(kdl_tokenizer_t *, wchar_t *buffer);
+void kdl_token_make(kdl_token_t *, wchar_t *buffer);
 
 void kdl_tokenizer_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
 bool kdl_tokenizer_next_token(kdl_tokenizer_t *, kdl_token_t *);

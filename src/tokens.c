@@ -2,7 +2,8 @@
 #include <cuddle/tokens.h>
 
 #define X(name) #name
-const char TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
+const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
+const char KDL_TOKEN_EXPECTS[][32] = { KDL_TOKEN_EXPECT_X };
 #undef X
 
 #define X(name, stores_data) #name
@@ -12,6 +13,18 @@ const char TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #define X(name, stores_data) stores_data
 const bool TOKENIZER_STATE_STORES[] = { KDL_TOKENIZER_STATES_X };
 #undef X
+
+void kdl_tokenizer_make(kdl_tokenizer_t *tzr, wchar_t *buffer) {
+    *tzr = (kdl_tokenizer_t){
+        .buf = buffer
+    };
+}
+
+void kdl_token_make(kdl_token_t *token, wchar_t *buffer) {
+    *token = (kdl_token_t){
+        .string = buffer
+    };
+}
 
 void kdl_tokenizer_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
     tzr->data = data;
@@ -56,11 +69,6 @@ static bool is_newline(wchar_t ch) {
 // might treat CRLF as two breaks?
 static inline bool is_break(wchar_t ch) {
     return is_newline(ch) || ch == L';' || ch == WEOF;
-}
-
-// TODO pass a block of memory in for the buffer instead of #defining a size
-void kdl_tokenizer_make(kdl_tokenizer_t *tzr) {
-    *tzr = (kdl_tokenizer_t){0};
 }
 
 /*
@@ -188,21 +196,194 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     tzr->last_chars[1] = ch;
 }
 
+// whether current token is slashdashed
 static inline bool is_slashdashed(kdl_tokenizer_t *tzr) {
     return tzr->buf_len >= 2 && tzr->buf[0] == L'/' && tzr->buf[1] == L'-';
 }
 
-// types and parses individual tokens
-static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    // detect token type
-    switch (tzr->state) {
-    case KDL_SEQ_STRING:
-        token->type = KDL_TOK_STRING;
+static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    size_t index = 0;
+    wchar_t *trav = tzr->buf + 1;
+
+    while (*trav) {
+        if (*trav == L'\\') {
+            ++trav;
+
+            // handle string escape
+            switch (*trav) {
+#define ESC_CASE(ch, esc) case ch: token->string[index++] = esc; break
+            ESC_CASE(L'n', L'\n');
+            ESC_CASE(L'r', L'\r');
+            ESC_CASE(L't', L'\t');
+            ESC_CASE(L'\\', L'\\');
+            ESC_CASE(L'/', L'/');
+            ESC_CASE(L'"', L'"');
+            ESC_CASE(L'b', L'\b');
+            ESC_CASE(L'f', L'\f');
+#undef ESC_CASE
+            case L'u':
+                KDL_UNIMPL("encountered unicode escape sequence\n");
+
+                break;
+            default:
+                token->string[index++] = *trav;
+
+                break;
+            }
+        } else {
+            token->string[index++] = *trav;
+        }
+
+        ++trav;
     }
 
-    // save data
-    // TODO for real
-    wcscpy(token->data.str, tzr->buf);
+    token->string[index] = L'\0';
+}
+
+static void parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    wchar_t *trav = tzr->buf;
+
+    // signs
+    bool negative = *trav == L'-';
+
+    trav += *trav == L'-' || *trav == L'+';
+
+    // integral values
+    long integral = 0;
+
+    while (*trav != L'.' && *trav) {
+        if (*trav != L'_') {
+            integral *= 10;
+            integral += *trav - L'0';
+        }
+
+        ++trav;
+    }
+
+    // fractional values
+    double fractional = 0.0;
+
+    while (*trav) {
+        if (*trav != L'_') {
+            fractional += *trav - L'0';
+            fractional *= 0.1;
+        }
+
+        ++trav;
+    }
+
+    // exponents
+    // TODO
+
+    token->data.number = (double)integral + fractional;
+}
+
+// detect and parse string types
+// returns whether string is found
+static bool find_str(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    switch (tzr->buf[0]) {
+    case L'"':
+        token->type = KDL_TOK_STRING;
+        parse_escaped_string(tzr, token);
+
+        return true;
+    case L'r':
+        if (tzr->buf[0] == L'#' || tzr->buf[1] == L'"')
+            KDL_UNIMPL("we aren't parsing raw strings yet!\n");
+    }
+
+    return false;
+}
+
+// detect and parse all value types
+static void find_value(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    if (find_str(tzr, token))
+        return;
+
+    switch (tzr->buf[0]) {
+    case L'-':
+        if (tzr->buf_len == 1) {
+            token->type = KDL_TOK_NULL;
+
+            break;
+        }
+
+        goto found_number;
+    default:
+        if (tzr->buf[0] < L'0' || tzr->buf[0] > L'9') {
+            const size_t scratch_size = 256;
+            char scratch[scratch_size + 1];
+
+            wcstombs(scratch, tzr->buf, scratch_size);
+            scratch[scratch_size] = 0;
+
+            KDL_ERROR("unknown token: \"%s\"\n", scratch);
+        }
+
+        /* fallthru */
+    case L'+':
+    found_number:
+        token->type = KDL_TOK_NUMBER;
+        parse_number(tzr, token);
+
+        break;
+    case L't':
+        token->type = KDL_TOK_BOOL;
+        token->data.boolean = true;
+
+        break;
+    case L'f':
+        token->type = KDL_TOK_BOOL;
+        token->data.boolean = false;
+
+        break;
+    case L'n':
+        token->type = KDL_TOK_NULL;
+
+        break;
+    }
+}
+
+// types and parses individual tokens
+static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    // child ends/beginnings
+    if (tzr->buf_len == 1) {
+        if (tzr->buf[0] == L'{') {
+            token->type = KDL_TOK_CHILD_BEGIN;
+
+            return;
+        } else if (tzr->buf[0] == L'}') {
+            token->type = KDL_TOK_CHILD_END;
+
+            return;
+        }
+    }
+
+    // detect token type
+    switch (tzr->expects) {
+    case KDL_EXP_NODE_ID:
+        token->type = KDL_TOK_NODE_ID;
+
+        break;
+    case KDL_EXP_ATTRIBUTE:
+        if (tzr->prop_name) {
+            token->type = KDL_TOK_PROP_ID;
+
+            break;
+        }
+
+        /* fallthru */
+    case KDL_EXP_PROP_VALUE:
+        // detect value type
+        find_value(tzr, token);
+
+        break;
+    }
+
+    // if id is actually a string, parse it
+    if (token->type == KDL_TOK_NODE_ID || token->type == KDL_TOK_PROP_ID)
+        if (!find_str(tzr, token))
+            wcscpy(token->string, tzr->buf); // must be identifier, no parsing
 }
 
 /*
@@ -221,6 +402,8 @@ bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         consume_char(tzr);
 
         // process a new potential token
+        bool generated_token = false;
+
         if (tzr->token_break) {
             if (tzr->buf_len == 1 && tzr->buf[0] == L'\\') {
                 // escape node break
@@ -229,10 +412,9 @@ bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
                 // generate a token
                 generate_token(tzr, token);
 
-                wprintf(L"|%ls| ", tzr->buf);
-
                 // set next state
                 switch (tzr->expects) {
+                case KDL_EXP_PROP_VALUE:
                 case KDL_EXP_NODE_ID:
                     tzr->expects = KDL_EXP_ATTRIBUTE;
 
@@ -244,10 +426,7 @@ bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
                     break;
                 }
 
-                if (tzr->buf_len == 1 && tzr->buf[0] == L'{')
-                    wprintf(L"\n");
-
-                return true;
+                generated_token = true;
             }
         }
 
@@ -255,12 +434,12 @@ bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         if (tzr->node_break) {
             if (tzr->discard_break)
                 tzr->discard_break = false;
-            else {
+            else
                 tzr->expects = KDL_EXP_NODE_ID;
-
-                wprintf(L"\n");
-            }
         }
+
+        if (generated_token)
+            return true;
     }
 
     return false;
