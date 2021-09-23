@@ -26,7 +26,7 @@ void kdl_token_make(kdl_token_t *token, wchar_t *buffer) {
     };
 }
 
-void kdl_tokenizer_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
+void kdl_tok_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
     tzr->data = data;
     tzr->data_len = length;
     tzr->data_idx = 0;
@@ -275,7 +275,7 @@ static void parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     // exponents
     // TODO
 
-    token->data.number = (double)integral + fractional;
+    token->number = (double)integral + fractional;
 }
 
 // detect and parse string types
@@ -329,12 +329,12 @@ static void find_value(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         break;
     case L't':
         token->type = KDL_TOK_BOOL;
-        token->data.boolean = true;
+        token->boolean = true;
 
         break;
     case L'f':
         token->type = KDL_TOK_BOOL;
-        token->data.boolean = false;
+        token->boolean = false;
 
         break;
     case L'n':
@@ -390,13 +390,13 @@ static void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
  * fills in 'token' with data of next token and returns true, or returns false
  * if the current token isn't finished yet. this lets you use the idiom:
  *
- * while (next_token()) { [ do something with token... ] }
+ * while (kdl_tok_next()) { [ do something with token... ] }
  *
  * this functions responsibilities are limited to sanitizing the raw token
  * stream from the state machine (processing line break escapes, slashdashes,
  * etc.), managing expectations, and returning fully typed and usable tokens.
  */
-bool kdl_tokenizer_next_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len) {
         // churn the state machine
         consume_char(tzr);

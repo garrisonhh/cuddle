@@ -90,17 +90,16 @@ typedef struct kdl_tokenizer {
 typedef struct kdl_token {
     kdl_token_type_e type;
 
-    wchar_t *string; // TODO should I store str_len?
-    union kdl_token_data {
-        double number;
-        bool boolean;
-    } data;
+    wchar_t *string;
+    size_t str_len;
+    double number;
+    bool boolean;
 } kdl_token_t;
 
 void kdl_tokenizer_make(kdl_tokenizer_t *, wchar_t *buffer);
 void kdl_token_make(kdl_token_t *, wchar_t *buffer);
 
-void kdl_tokenizer_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
-bool kdl_tokenizer_next_token(kdl_tokenizer_t *, kdl_token_t *);
+void kdl_tok_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
+bool kdl_tok_next(kdl_tokenizer_t *, kdl_token_t *);
 
 #endif
