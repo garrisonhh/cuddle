@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <cuddle/meta.h>
 #include <cuddle/tokens.h>
 
@@ -68,7 +70,7 @@ static bool is_newline(wchar_t ch) {
 
 // might treat CRLF as two breaks?
 static inline bool is_break(wchar_t ch) {
-    return is_newline(ch) || ch == L';' || ch == WEOF;
+    return is_newline(ch) || ch == L';' || ch == (wchar_t)WEOF;
 }
 
 /*
@@ -240,42 +242,67 @@ static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     token->string[index] = L'\0';
 }
 
+static inline long parse_sign(wchar_t **trav) {
+    long sign = **trav == L'-' ? -1 : 1;
+
+    *trav += (**trav == L'-' || **trav == L'+');
+
+    return sign;
+}
+
+// used to parse until first decimal and to parse exponents
+static long parse_integral(wchar_t **trav) {
+    long sign = parse_sign(trav), integral = 0;
+
+    while (**trav != L'.' && **trav) {
+        if (**trav != L'_') {
+            integral *= 10;
+            integral += **trav - L'0';
+        }
+
+        ++*trav;
+    }
+
+    return sign * integral;
+}
+
 static void parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     wchar_t *trav = tzr->buf;
 
-    // signs
-    bool negative = *trav == L'-';
+    // integral value
+    double sign = parse_sign(&trav);
 
-    trav += *trav == L'-' || *trav == L'+';
-
-    // integral values
-    long integral = 0;
-
-    while (*trav != L'.' && *trav) {
-        if (*trav != L'_') {
-            integral *= 10;
-            integral += *trav - L'0';
-        }
-
-        ++trav;
-    }
+    token->number = parse_integral(&trav) * sign;
 
     // fractional values
-    double fractional = 0.0;
-
-    while (*trav) {
-        if (*trav != L'_') {
-            fractional += *trav - L'0';
-            fractional *= 0.1;
-        }
+    if (*trav == L'.') {
+        double fractional = 0.0, multiplier = 0.1;
 
         ++trav;
+
+        while (*trav != L'e' && *trav != L'E' && *trav) {
+            if (*trav != L'_') {
+                fractional += (double)(*trav - L'0') * multiplier;
+                multiplier *= 0.1;
+            }
+
+            ++trav;
+        }
+
+        // number before exponentiation
+        token->number += fractional * sign;
+
+        // exponents
+        if (*trav == L'e' || *trav == L'E') {
+            ++trav;
+
+            token->number *= pow(
+                10.0,
+                parse_sign(&trav) * (double)parse_integral(&trav)
+            );
+        }
     }
 
-    // exponents
-    // TODO
-
-    token->number = (double)integral + fractional;
 }
 
 // detect and parse string types
