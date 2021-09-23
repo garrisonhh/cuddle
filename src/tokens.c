@@ -112,7 +112,7 @@ static void consume_char(kdl_tokenizer_t *tzr) {
 
         break;
     case KDL_SEQ_C_COMM:
-        if (ch == L'/' && tzr->last_chars[1] == L'*')
+        if (ch == L'/' && tzr->last_char == L'*')
             next_state = KDL_SEQ_WHITESPACE;
 
         break;
@@ -122,18 +122,26 @@ static void consume_char(kdl_tokenizer_t *tzr) {
 
         break;
     case KDL_SEQ_STRING:
-        if (ch == L'"' && tzr->last_chars[1] != L'\\')
+        if (ch == L'"' && tzr->last_char != L'\\')
             next_state = KDL_SEQ_WHITESPACE;
 
         break;
     case KDL_SEQ_RAW_STR:
-        if (ch == L'"')
-            next_state = KDL_SEQ_WHITESPACE;
+        // find matching number of '#' to beginning of raw string
+        if (ch == L'"') {
+            // reset raw '#' count
+            tzr->raw_current = 1;
+        } else if (tzr->raw_current) {
+            // count '#'s and check if they match number at beginning of raw str
+            if (ch == L'#') {
+                ++tzr->raw_current;
+            } else {
+                if (tzr->raw_current == tzr->raw_count)
+                    next_state = KDL_SEQ_WHITESPACE;
 
-        break;
-    case KDL_SEQ_LONG_RAW_STR:
-        if (ch == L'#' && tzr->last_chars[1] == L'"')
-            next_state = KDL_SEQ_WHITESPACE;
+                tzr->raw_current = 0;
+            }
+        }
 
         break;
     case KDL_SEQ_ANNOTATION:
@@ -147,21 +155,27 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     if (next_state == KDL_SEQ_CHARACTER) {
         if (ch == L'"') {
             // detect string types
-            if (tzr->last_chars[0] == L'r' && tzr->last_chars[1] == L'#')
-                next_state = KDL_SEQ_LONG_RAW_STR;
-            else if (tzr->last_chars[1] == L'r')
-                next_state = KDL_SEQ_RAW_STR;
-            else
-                next_state = KDL_SEQ_STRING;
-        } else if (tzr->last_chars[1] == L'/') {
+            next_state = tzr->raw_count ? KDL_SEQ_RAW_STR : KDL_SEQ_STRING;
+        } else if (tzr->last_char == L'/') {
             // detect comments
             if (ch == L'/')
                 next_state = KDL_SEQ_CPP_COMM;
             else if (ch == L'*')
                 next_state = KDL_SEQ_C_COMM;
-        } else if (ch == L'(') {
-            // type annotations
-            next_state = KDL_SEQ_ANNOTATION;
+        } else if (tzr->buf_len == 0) {
+            if (ch == L'(') {
+                // type annotations
+                next_state = KDL_SEQ_ANNOTATION;
+            } else if (ch == L'r') {
+                // beginning of raw string
+                tzr->raw_count = 1;
+            }
+        } else if (tzr->raw_count) {
+            // count '#' at beginning of raw string
+            if (ch == L'#')
+                ++tzr->raw_count;
+            else
+                tzr->raw_count = 0;
         }
     } else if (next_state == KDL_SEQ_WHITESPACE && ch == L'=') {
         tzr->prop_name = true;
@@ -194,8 +208,7 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     // set persistent stuff for the next iteration
     tzr->state = next_state;
 
-    tzr->last_chars[0] = tzr->last_chars[1];
-    tzr->last_chars[1] = ch;
+    tzr->last_char = ch;
 }
 
 // whether current token is slashdashed
@@ -232,22 +245,18 @@ static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
                 for (size_t i = 0; i < 6; ++i) {
                     ++trav;
 
-                    int diff = *trav - L'0';
+                    unsigned diff = *trav - L'0'; // unsigned to avoid >= 0 cmp
 
-                    if (diff >= 0 && diff < 10) {
+                    if (diff < 10) {
                         ch *= 16;
                         ch += diff;
+                    } else if ((diff = *trav - L'A') < 6) {
+                        ch *= 16;
+                        ch += diff + 10;
                     } else {
-                        diff = *trav - L'A';
+                        --trav;
 
-                        if (diff >= 0 && diff < 6) {
-                            ch *= 16;
-                            ch += diff + 10;
-                        } else {
-                            --trav;
-
-                            break;
-                        }
+                        break;
                     }
                 }
 
@@ -293,6 +302,7 @@ static long parse_integral(wchar_t **trav) {
     return sign * integral;
 }
 
+// TODO binary, octal, hexadecimal numbers
 static void parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     wchar_t *trav = tzr->buf;
 
@@ -332,6 +342,24 @@ static void parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
 }
 
+static void parse_raw_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    // find beginning of raw string
+    size_t start = 0;
+
+    while (tzr->buf[start++] != L'"')
+        ;
+
+    // find end of string
+    size_t end = tzr->buf_len;
+
+    while (tzr->buf[--end] != L'"')
+        ;
+
+    // chop end of string and strcpy
+    tzr->buf[end] = L'\0';
+    wcscpy(token->string, tzr->buf + start);
+}
+
 // detect and parse string types
 // returns whether string is found
 static bool find_str(kdl_tokenizer_t *tzr, kdl_token_t *token) {
@@ -342,8 +370,10 @@ static bool find_str(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
         return true;
     case L'r':
-        if (tzr->buf[0] == L'#' || tzr->buf[1] == L'"')
-            KDL_UNIMPL("we aren't parsing raw strings yet!\n");
+        token->type = KDL_TOK_STRING;
+        parse_raw_string(tzr, token);
+
+        return true;
     }
 
     return false;

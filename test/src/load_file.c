@@ -15,7 +15,7 @@ bool wchar_fread(wchar_t *buf, size_t len_buf, FILE *file) {
     return n_read > 0;
 }
 
-int main(__attribute__((unused)) int argc, char **argv) {
+int main(int argc, char **argv) {
     // file stuff
     setlocale(LC_ALL, "en_US.UTF-8");
 
@@ -42,18 +42,14 @@ int main(__attribute__((unused)) int argc, char **argv) {
     kdl_tokenizer_make(&tzr, tzr_buf);
     kdl_token_make(&token, tok_buf);
 
-    // read file in, small
+    // read and feed
     wchar_t buf[len_buf];
 
     while (wchar_fread(buf, len_buf, file)) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {
-            wprintf(
-                L"%-32s %-64ls ",
-                KDL_TOKEN_TYPES[token.type],
-                token.type == KDL_TOK_STRING ? token.string : tzr.buf
-            );
+            wprintf(L"%-32s %-64ls ", KDL_TOKEN_TYPES[token.type], tzr.buf);
 
             switch (token.type) {
             default:
@@ -68,6 +64,10 @@ int main(__attribute__((unused)) int argc, char **argv) {
                 break;
             case KDL_TOK_NUMBER:
                 wprintf(L"%f", token.number);
+
+                break;
+            case KDL_TOK_STRING:
+                wprintf(token.string);
 
                 break;
             }

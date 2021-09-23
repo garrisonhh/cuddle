@@ -40,7 +40,6 @@
     X(KDL_SEQ_CPP_COMM,     0),\
     X(KDL_SEQ_STRING,       1),\
     X(KDL_SEQ_RAW_STR,      1),\
-    X(KDL_SEQ_LONG_RAW_STR, 1),\
     X(KDL_SEQ_ANNOTATION,   0)
 
 #define X(name) name
@@ -63,6 +62,7 @@ typedef enum kdl_token_sequence_state {
 extern const char KDL_TOKEN_TYPES[][32];
 extern const char KDL_TOKEN_EXPECTS[][32];
 
+// TODO properly support slashdash comments
 typedef struct kdl_tokenizer {
     // current data
     wchar_t *data;
@@ -73,8 +73,9 @@ typedef struct kdl_tokenizer {
     size_t buf_len; // this is current length, not total memory length
 
     // parsing state
-    wchar_t last_chars[2]; // used for detecting char sequences
+    wchar_t last_char; // used for detecting char sequences
     kdl_tokenizer_state_e state;
+    int raw_count, raw_current; // used for parsing raw strings
 
     unsigned token_break: 1; // true at end of token
     unsigned node_break: 1; // true at end of line (escapes are handled later!!)
@@ -84,7 +85,7 @@ typedef struct kdl_tokenizer {
     // token typing state
     kdl_token_expect_e expects;
 
-    unsigned discard_break: 1;
+    unsigned discard_break: 1; // discard next node break
 } kdl_tokenizer_t;
 
 typedef struct kdl_token {
