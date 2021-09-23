@@ -1,6 +1,6 @@
 TEST_SOURCES="src/load_file.c"
 LIB_SOURCES="../src/**.c"
-FLAGS="-std=c99 -Wall -Wextra -Wpedantic -Werror"
+FLAGS="-lm -std=c99 -Wall -Wextra -Wpedantic -Werror"
 INCLUDES="-I../include"
 
 OPTIMIZE_FLAGS="-g -DDEBUG"
