@@ -209,6 +209,8 @@ static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
     while (*trav) {
         if (*trav == L'\\') {
+            wchar_t ch; // for unicode sequences
+
             ++trav;
 
             // handle string escape
@@ -224,7 +226,32 @@ static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
             ESC_CASE(L'f', L'\f');
 #undef ESC_CASE
             case L'u':
-                KDL_UNIMPL("encountered unicode escape sequence\n");
+                // parse unicode escape sequence
+                ch = 0;
+
+                for (size_t i = 0; i < 6; ++i) {
+                    ++trav;
+
+                    int diff = *trav - L'0';
+
+                    if (diff >= 0 && diff < 10) {
+                        ch *= 16;
+                        ch += diff;
+                    } else {
+                        diff = *trav - L'A';
+
+                        if (diff >= 0 && diff < 6) {
+                            ch *= 16;
+                            ch += diff + 10;
+                        } else {
+                            --trav;
+
+                            break;
+                        }
+                    }
+                }
+
+                token->string[index++] = ch;
 
                 break;
             default:
@@ -467,6 +494,10 @@ bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
         if (generated_token)
             return true;
+
+        // break at NUL
+        if (!tzr->data[tzr->data_idx])
+            break;
     }
 
     return false;
