@@ -5,10 +5,6 @@
 #include <stdbool.h>
 #include <wchar.h>
 
-#ifndef KDL_TOKEN_BUFFER
-#define KDL_TOKEN_BUFFER (2048)
-#endif
-
 #define KDL_TOKEN_TYPES_X\
     X(KDL_TOK_NODE_ID),\
     X(KDL_TOK_PROP_ID),\
@@ -24,23 +20,20 @@
     X(KDL_EXP_ATTRIBUTE /* arg, prop, or child_begin */),\
     X(KDL_EXP_PROP_VALUE)
 
-/*
- * table of (name, stores_data)
- *
- * sequences generally alternate between whitespace and character, and then are
- * dynamically detected to be other types.
- *
- * slashdash comments are removed in post
- */
 #define KDL_TOKENIZER_STATES_X\
-    X(KDL_SEQ_WHITESPACE,   0),\
-    X(KDL_SEQ_CHARACTER,    1),\
-    X(KDL_SEQ_BREAK,        0),\
-    X(KDL_SEQ_C_COMM,       0),\
-    X(KDL_SEQ_CPP_COMM,     0),\
-    X(KDL_SEQ_STRING,       1),\
-    X(KDL_SEQ_RAW_STR,      1),\
-    X(KDL_SEQ_ANNOTATION,   0)
+    X(KDL_SEQ_WHITESPACE),\
+    X(KDL_SEQ_CHARACTER),\
+    /* symbols */\
+    X(KDL_SEQ_BREAK),\
+    X(KDL_SEQ_ASSIGNMENT),\
+    X(KDL_SEQ_CHILD_BEGIN),\
+    X(KDL_SEQ_CHILD_END),\
+    /* toggled states */\
+    X(KDL_SEQ_C_COMM),\
+    X(KDL_SEQ_CPP_COMM),\
+    X(KDL_SEQ_STRING),\
+    X(KDL_SEQ_RAW_STR),\
+    X(KDL_SEQ_ANNOTATION)
 
 #define X(name) name
 typedef enum kdl_token_type {
@@ -50,10 +43,8 @@ typedef enum kdl_token_type {
 typedef enum kdl_token_expect {
     KDL_TOKEN_EXPECT_X
 } kdl_token_expect_e;
-#undef X
 
-#define X(name, stores_data) name
-typedef enum kdl_token_sequence_state {
+typedef enum kdl_tokenizer_state {
     KDL_TOKENIZER_STATES_X
 } kdl_tokenizer_state_e;
 #undef X
@@ -62,7 +53,6 @@ typedef enum kdl_token_sequence_state {
 extern const char KDL_TOKEN_TYPES[][32];
 extern const char KDL_TOKEN_EXPECTS[][32];
 
-// TODO properly support slashdash comments
 typedef struct kdl_tokenizer {
     // current data
     wchar_t *data;
@@ -75,17 +65,17 @@ typedef struct kdl_tokenizer {
     // parsing state
     wchar_t last_char; // used for detecting char sequences
     kdl_tokenizer_state_e state;
-    int raw_count, raw_current; // used for parsing raw strings
 
-    unsigned token_break: 1; // true at end of token
-    unsigned node_break: 1; // true at end of line (escapes are handled later!!)
-    unsigned prop_name: 1; // true if token is a prop name
-    unsigned: 0;
+    unsigned reset_buf: 1;
+    unsigned token_break: 1;
+    unsigned node_break: 1;
 
     // token typing state
+    /*
     kdl_token_expect_e expects;
 
     unsigned discard_break: 1; // discard next node break
+    */
 } kdl_tokenizer_t;
 
 typedef struct kdl_token {

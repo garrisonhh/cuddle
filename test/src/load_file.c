@@ -3,6 +3,8 @@
 #include <wchar.h>
 #include <locale.h>
 
+#include <string.h>
+
 #include <cuddle/cuddle.h>
 
 // since I can't get fread to work
@@ -10,7 +12,7 @@ bool wchar_fread(wchar_t *buf, size_t len_buf, FILE *file) {
     char mb_buf[len_buf];
     size_t n_read = fread(mb_buf, sizeof(mb_buf[0]), len_buf, file);
 
-    mbstowcs(buf, mb_buf, len_buf);
+    mbstowcs(buf, mb_buf, n_read);
 
     return n_read > 0;
 }
@@ -49,6 +51,9 @@ int main(int argc, char **argv) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {
+            wprintf(L"tok: \"%ls\"\n", tzr.buf);
+
+            /*
             wprintf(L"%-32s %-64ls ", KDL_TOKEN_TYPES[token.type], tzr.buf);
 
             switch (token.type) {
@@ -66,6 +71,8 @@ int main(int argc, char **argv) {
                 wprintf(L"%f", token.number);
 
                 break;
+            case KDL_TOK_NODE_ID:
+            case KDL_TOK_PROP_ID:
             case KDL_TOK_STRING:
                 wprintf(token.string);
 
@@ -73,6 +80,11 @@ int main(int argc, char **argv) {
             }
 
             putwchar(L'\n');
+
+            if (tzr.node_break) {
+                wprintf(L"NODE BREAK\n");
+            }
+            */
         }
     }
 
