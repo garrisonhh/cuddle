@@ -3,8 +3,6 @@
 #include <wchar.h>
 #include <locale.h>
 
-#include <string.h>
-
 #include <cuddle/cuddle.h>
 
 // since I can't get fread to work

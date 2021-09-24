@@ -66,6 +66,10 @@ typedef struct kdl_tokenizer {
     wchar_t last_char; // used for detecting char sequences
     kdl_tokenizer_state_e state;
 
+    int c_comm_level; // for stacked c comments
+    int raw_count, raw_current; // for counting raw string '#'s
+
+    unsigned force_detect: 1;
     unsigned reset_buf: 1;
     unsigned token_break: 1;
     unsigned node_break: 1;
