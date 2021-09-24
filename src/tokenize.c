@@ -80,6 +80,7 @@ static kdl_tokenizer_state_e detect_next_state(
     case L'}': return KDL_SEQ_CHILD_END;
     case L'=': return KDL_SEQ_ASSIGNMENT;
     case L'(': return KDL_SEQ_ANNOTATION;
+    case L'\\': return KDL_SEQ_BREAK_ESC;
     case L'"':
         // could be raw string or string
         if (tzr->state == KDL_SEQ_CHARACTER) {
@@ -174,7 +175,7 @@ static void consume_char(kdl_tokenizer_t *tzr) {
 
             break;
         case KDL_SEQ_RAW_STR:
-            // look for matching '#' sequence
+            // await matching '#' sequence
             if (ch == L'"') {
                 tzr->raw_current = 1;
             } else if (tzr->raw_current && ch == L'#') {
@@ -203,7 +204,11 @@ static void consume_char(kdl_tokenizer_t *tzr) {
             if (next_state == KDL_SEQ_C_COMM
              || next_state == KDL_SEQ_CPP_COMM
              || next_state == KDL_SEQ_RAW_STR) {
-                // no token break for multi-char detected sequences
+                /*
+                 * multi-char detected sequences start out as KDL_SEQ_CHARACTER
+                 * until proven otherwise, so a token break here would create
+                 * weird invalid tokens
+                 */
                 break;
             }
 
@@ -223,6 +228,7 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     tzr->buf[++tzr->buf_len] = L'\0';
 
     // store state
+    tzr->last_state = tzr->state;
     tzr->state = next_state;
     tzr->last_char = ch;
 }

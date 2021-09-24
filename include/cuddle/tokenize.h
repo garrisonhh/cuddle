@@ -6,10 +6,7 @@
 #include <wchar.h>
 
 #define KDL_TOKEN_TYPES_X\
-    X(KDL_TOK_NODE_ID),\
-    X(KDL_TOK_PROP_ID),\
-    X(KDL_TOK_CHILD_BEGIN),\
-    X(KDL_TOK_CHILD_END),\
+    X(KDL_TOK_IDENTIFIER),\
     X(KDL_TOK_STRING),\
     X(KDL_TOK_NUMBER),\
     X(KDL_TOK_BOOL),\
@@ -20,11 +17,13 @@
     X(KDL_EXP_ATTRIBUTE /* arg, prop, or child_begin */),\
     X(KDL_EXP_PROP_VALUE)
 
+// table of (name, tentative type)
 #define KDL_TOKENIZER_STATES_X\
     X(KDL_SEQ_WHITESPACE),\
     X(KDL_SEQ_CHARACTER),\
     /* symbols */\
     X(KDL_SEQ_BREAK),\
+    X(KDL_SEQ_BREAK_ESC),\
     X(KDL_SEQ_ASSIGNMENT),\
     X(KDL_SEQ_CHILD_BEGIN),\
     X(KDL_SEQ_CHILD_END),\
@@ -64,7 +63,7 @@ typedef struct kdl_tokenizer {
 
     // parsing state
     wchar_t last_char; // used for detecting char sequences
-    kdl_tokenizer_state_e state;
+    kdl_tokenizer_state_e state, last_state;
 
     int c_comm_level; // for stacked c comments
     int raw_count, raw_current; // for counting raw string '#'s
