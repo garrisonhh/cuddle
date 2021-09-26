@@ -5,13 +5,13 @@
 
 #define X(name) #name
 const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
-const char KDL_TOKEN_EXPECTS[][32] = { KDL_TOKEN_EXPECT_X };
-const char TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
+const char KDL_TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
 void kdl_tokenizer_make(kdl_tokenizer_t *tzr, wchar_t *buffer) {
     *tzr = (kdl_tokenizer_t){
-        .buf = buffer
+        .buf = buffer,
+        .expect_node = true
     };
 }
 
@@ -201,20 +201,29 @@ static void consume_char(kdl_tokenizer_t *tzr) {
 
         switch (tzr->state) {
         case KDL_SEQ_CHARACTER:
+            // check for multi-char sequences which start out as characters
             if (next_state == KDL_SEQ_C_COMM
-             || next_state == KDL_SEQ_CPP_COMM
-             || next_state == KDL_SEQ_RAW_STR) {
-                /*
-                 * multi-char detected sequences start out as KDL_SEQ_CHARACTER
-                 * until proven otherwise, so a token break here would create
-                 * weird invalid tokens
-                 */
+             || next_state == KDL_SEQ_CPP_COMM) {
+                if (!tzr->buf_len) {
+                    break;
+                } else {
+                    /*
+                     * TODO this prevents the slash from being recorded in the
+                     * token buffer, but is definitely hacky. find a better
+                     * solution?
+                     */
+                    tzr->buf_len += 2;
+                }
+            } else if (next_state == KDL_SEQ_RAW_STR) {
                 break;
             }
 
             /* fallthru */
         case KDL_SEQ_STRING:
         case KDL_SEQ_RAW_STR:
+        // below cases don't return values, but are necessary for proper parsing
+        case KDL_SEQ_CHILD_BEGIN:
+        case KDL_SEQ_CHILD_END:
             tzr->token_break = true;
 
             break;
@@ -241,16 +250,58 @@ static void consume_char(kdl_tokenizer_t *tzr) {
  *
  * this functions responsibilities are limited to sanitizing the raw token
  * stream from the state machine (processing line break escapes, slashdashes,
- * etc.), managing expectations, and returning fully typed and usable tokens.
- *
- * TODO properly parse slashdash comments for nodes and properties
+ * etc.), and returning fully typed and usable tokens to the user
  */
-bool kdl_tok_next(kdl_tokenizer_t *tzr, __attribute__((unused)) kdl_token_t *token) {
+void generate_token(kdl_tokenizer_t *, kdl_token_t *); // in token_parse.c
+
+bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len && tzr->data[tzr->data_idx]) {
         consume_char(tzr);
 
-        if (tzr->token_break)
-            return true;
+        if (tzr->token_break) {
+            switch (tzr->last_state) {
+            case KDL_SEQ_BREAK:
+                if (tzr->break_escape)
+                    tzr->break_escape = false;
+                else
+                    tzr->expect_node = true;
+
+                break;
+            case KDL_SEQ_BREAK_ESC:
+                tzr->break_escape = true;
+
+                break;
+            default:
+                // check for slashdashing
+                if (tzr->buf_len >= 2 && tzr->buf[0] == L'/'
+                 && tzr->buf[1] == L'-') {
+                    // begin slashdash comment
+                    if (tzr->expect_node) {
+                        tzr->expect_node = false;
+
+                        KDL_UNIMPL("node slashdash!!!\n");
+                    } else if (tzr->state == KDL_SEQ_ASSIGNMENT) {
+                        tzr->slashdash_prop = true;
+                    }
+
+                    break;
+                } else if (tzr->slashdash_prop) {
+                    // slashdash prop value
+                    tzr->slashdash_prop = false;
+
+                    break;
+                }
+
+                // generate token when called for
+                generate_token(tzr, token);
+
+                // non-KDL_SEQ_BREAK node breaks
+                tzr->expect_node |= token->type == KDL_TOK_CHILD_BEGIN
+                                 || token->type == KDL_TOK_CHILD_END;
+
+                return true;
+            }
+        }
     }
 
     return false;

@@ -49,16 +49,14 @@ int main(int argc, char **argv) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {
-            wprintf(L"tok: \"%ls\"\n", tzr.buf);
-
-            /*
-            wprintf(L"%-32s %-64ls ", KDL_TOKEN_TYPES[token.type], tzr.buf);
+            if (token.node)
+                putwchar(L'\n');
 
             switch (token.type) {
             default:
                 break;
             case KDL_TOK_NULL:
-                wprintf(L"-");
+                wprintf(L"null");
 
                 break;
             case KDL_TOK_BOOL:
@@ -69,20 +67,25 @@ int main(int argc, char **argv) {
                 wprintf(L"%f", token.number);
 
                 break;
-            case KDL_TOK_NODE_ID:
-            case KDL_TOK_PROP_ID:
-            case KDL_TOK_STRING:
+            case KDL_TOK_IDENTIFIER:
                 wprintf(token.string);
+
+                break;
+            case KDL_TOK_STRING:
+                wprintf(L"\"%ls\"", token.string);
+
+                break;
+            case KDL_TOK_CHILD_BEGIN:
+                putwchar(L'{');
+
+                break;
+            case KDL_TOK_CHILD_END:
+                putwchar(L'}');
 
                 break;
             }
 
-            putwchar(L'\n');
-
-            if (tzr.node_break) {
-                wprintf(L"NODE BREAK\n");
-            }
-            */
+            putwchar(token.property ? L'=' : L' ');
         }
     }
 
