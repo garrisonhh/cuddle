@@ -53,8 +53,6 @@ int main(int argc, char **argv) {
                 putwchar(L'\n');
 
             switch (token.type) {
-            default:
-                break;
             case KDL_TOK_NULL:
                 wprintf(L"null");
 
@@ -68,7 +66,7 @@ int main(int argc, char **argv) {
 
                 break;
             case KDL_TOK_IDENTIFIER:
-                wprintf(token.string);
+                wprintf(L"(id)%ls", token.string);
 
                 break;
             case KDL_TOK_STRING:
@@ -86,6 +84,7 @@ int main(int argc, char **argv) {
             }
 
             putwchar(token.property ? L'=' : L' ');
+            fflush(stdout);
         }
     }
 

@@ -86,59 +86,111 @@ static inline long parse_sign(wchar_t **trav) {
     return sign;
 }
 
-// used to parse until first decimal and to parse exponents
-static long parse_integral(wchar_t **trav) {
-    long sign = parse_sign(trav), integral = 0;
+static long parse_num_base(wchar_t **trav, int base) {
+    long integral = 0;
 
-    while (**trav != L'.' && **trav) {
-        if (**trav != L'_') {
-            integral *= 10;
+    while (1) {
+        if (**trav >= L'0' && **trav < L'0' + base) {
+            integral *= base;
             integral += **trav - L'0';
+        } else if (**trav != L'_') {
+            return integral;
         }
 
         ++*trav;
     }
-
-    return sign * integral;
 }
 
-// returns if number was valid
-// TODO binary, octal, hexadecimal numbers
-static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    wchar_t *trav = tzr->buf;
+static long parse_hex(wchar_t **trav) {
+    long integral = 0;
 
-    // integral value
-    double sign = parse_sign(&trav);
-    double number = parse_integral(&trav) * sign;
+    while (1) {
+        // TODO this could definitely be a lot cleaner
+        if (**trav >= L'0' && **trav <= L'9') {
+            integral *= 16;
+            integral += **trav - L'0';
+        } else if (**trav >= L'A' && **trav <= L'F') {
+            integral *= 16;
+            integral += 10 + **trav - L'A';
+        } else if (**trav >= L'a' && **trav <= L'f') {
+            integral *= 16;
+            integral += 10 + **trav - L'a';
+        } else if (**trav != L'_') {
+            return integral;
+        }
+
+        ++*trav;
+    }
+}
+
+static double parse_dec(wchar_t **trav) {
+    double number = parse_num_base(trav, 10);
 
     // fractional values
-    if (*trav == L'.') {
+    if (**trav == L'.') {
         double fractional = 0.0, multiplier = 0.1;
 
-        ++trav;
+        ++*trav;
 
-        while (*trav != L'e' && *trav != L'E' && *trav) {
-            if (*trav != L'_') {
-                fractional += (double)(*trav - L'0') * multiplier;
+        while (**trav != L'e' && **trav != L'E' && **trav) {
+            if (**trav != L'_') {
+                fractional += (double)(**trav - L'0') * multiplier;
                 multiplier *= 0.1;
             }
 
-            ++trav;
+            ++*trav;
         }
 
         // number before exponentiation
-        number += fractional * sign;
+        number += fractional;
 
         // exponents
-        if (*trav == L'e' || *trav == L'E') {
-            ++trav;
+        if (**trav == L'e' || **trav == L'E') {
+            ++*trav;
 
             number *= pow(
                 10.0,
-                parse_sign(&trav) * (double)parse_integral(&trav)
+                parse_sign(trav) * (double)parse_num_base(trav, 10)
             );
         }
     }
+
+    return number;
+}
+
+// returns if number was valid
+static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
+    wchar_t *trav = tzr->buf;
+    double sign = parse_sign(&trav);
+    double number;
+
+    if (*trav == L'0') {
+        switch (*(trav + 1)) {
+        case L'x':
+            trav += 2;
+            number = parse_hex(&trav);
+
+            break;
+        case L'b':
+            trav += 2;
+            number = parse_num_base(&trav, 2);
+
+            break;
+        case L'o':
+            trav += 2;
+            number = parse_num_base(&trav, 8);
+
+            break;
+        default:
+            number = parse_dec(&trav);
+
+            break;
+        }
+    } else {
+        number = parse_dec(&trav);
+    }
+
+    number *= sign;
 
     // return validity
     if (!*trav) {
@@ -146,6 +198,8 @@ static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
         return true;
     }
+
+    wprintf(L"invalid number: \"%ls\" -> %f\n", tzr->buf, number);
 
     return false;
 }
