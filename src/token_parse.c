@@ -262,7 +262,10 @@ void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
 
         break;
     default:
-        KDL_ERROR("wtf is this %s\n", KDL_TOKENIZER_STATES[tzr->last_state]);
+        KDL_ERROR(
+            "wtf is this?? token parse retrieved a %s\n",
+            KDL_TOKENIZER_STATES[tzr->last_state]
+        );
     }
 
     // flags

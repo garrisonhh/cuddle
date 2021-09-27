@@ -17,7 +17,7 @@ bool wchar_fread(wchar_t *buf, size_t len_buf, FILE *file) {
 
 int main(int argc, char **argv) {
     // file stuff
-    setlocale(LC_ALL, "en_US.UTF-8");
+    setlocale(LC_ALL, "C");
 
     if (argc != 2) {
         fprintf(stderr, "please supply a file path as first argument.\n");

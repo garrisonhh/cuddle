@@ -91,6 +91,11 @@ typedef struct kdl_token {
     unsigned property: 1;
 } kdl_token_t;
 
+/*
+ * buffers are just raw memory. the tokenizer buffer needs to be able to hold
+ * the longest raw token component, and the token buffer needs to be able to
+ * hold the longest processed string.
+ */
 void kdl_tokenizer_make(kdl_tokenizer_t *, wchar_t *buffer);
 void kdl_token_make(kdl_token_t *, wchar_t *buffer);
 

@@ -2,5 +2,6 @@
 #define KDL_CUDDLE_H
 
 #include "tokenize.h"
+#include "utf8.h"
 
 #endif

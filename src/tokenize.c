@@ -304,7 +304,7 @@ bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         default:
             break;
         }
-        
+
         // tokens
         if (tzr->token_break && !tzr->sd_node) {
             if (tzr->sd_value) {
