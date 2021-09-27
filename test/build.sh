@@ -1,4 +1,4 @@
-TEST_SOURCES="src/load_file.c"
+TEST_SOURCES="src/**.c"
 LIB_SOURCES="../src/**.c"
 FLAGS="-lm -std=c99 -Wall -Wextra -Wpedantic"
 INCLUDES="-I../include"

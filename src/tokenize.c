@@ -110,8 +110,15 @@ static kdl_tokenizer_state_e detect_next_state(
     // multi char mappings
     if (tzr->state == KDL_SEQ_CHARACTER && tzr->last_char == L'/') {
         switch (ch) {
-        case L'*': return KDL_SEQ_C_COMM;
-        case L'/': return KDL_SEQ_CPP_COMM;
+        case L'*':
+            return KDL_SEQ_C_COMM;
+        case L'/':
+            return KDL_SEQ_CPP_COMM;
+        case L'-':
+            if (tzr->buf_len == 0)
+                return KDL_SEQ_SD_COMM;
+
+            break;
         }
     }
 
@@ -213,7 +220,8 @@ static void consume_char(kdl_tokenizer_t *tzr) {
                      */
                     tzr->buf_len += 2;
                 }
-            } else if (next_state == KDL_SEQ_RAW_STR) {
+            } else if (next_state == KDL_SEQ_RAW_STR
+                    || next_state == KDL_SEQ_SD_COMM) {
                 break;
             }
 
@@ -255,10 +263,15 @@ bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len && tzr->data[tzr->data_idx]) {
         consume_char(tzr);
 
-        // line breaks
+        // line break and node slashdash state machine
         switch (tzr->last_state) {
         case KDL_SEQ_CHILD_BEGIN:
+            ++tzr->sd_node_level;
+            tzr->expect_node = true;
+
+            break;
         case KDL_SEQ_CHILD_END:
+            --tzr->sd_node_level;
             tzr->expect_node = true;
 
             break;
@@ -268,21 +281,42 @@ bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
             else
                 tzr->expect_node = true;
 
+            // end of slashdash nodes
+            if (tzr->sd_node && tzr->sd_node_level == 0)
+                tzr->sd_node = false;
+
             break;
         case KDL_SEQ_BREAK_ESC:
             tzr->break_escape = true;
 
             break;
+        case KDL_SEQ_SD_COMM:
+            if (!(tzr->sd_node || tzr->sd_value)) {
+                if (tzr->expect_node) {
+                    tzr->sd_node = true;
+                    tzr->sd_node_level = 0;
+                } else {
+                    tzr->sd_value = true;
+                }
+            }
+
+            break;
         default:
             break;
         }
-
+        
         // tokens
-        if (tzr->token_break) {
-            // valid non-slashdashed token; type, parse, and pass
-            generate_token(tzr, token);
+        if (tzr->token_break && !tzr->sd_node) {
+            if (tzr->sd_value) {
+                // slashdash values until they aren't prop names
+                if (tzr->state != KDL_SEQ_ASSIGNMENT)
+                    tzr->sd_value = false;
+            } else {
+                // valid non-slashdashed token; type, parse, and pass
+                generate_token(tzr, token);
 
-            return true;
+                return true;
+            }
         }
     }
 

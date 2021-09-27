@@ -26,6 +26,7 @@
     X(KDL_SEQ_ASSIGNMENT),\
     X(KDL_SEQ_CHILD_BEGIN),\
     X(KDL_SEQ_CHILD_END),\
+    X(KDL_SEQ_SD_COMM),\
     /* toggled states */\
     X(KDL_SEQ_STRING),\
     X(KDL_SEQ_RAW_STR),\
@@ -70,11 +71,16 @@ typedef struct kdl_tokenizer {
     // token typing state
     unsigned break_escape: 1;
     unsigned expect_node: 1;
+    unsigned sd_node: 1;
+    unsigned sd_value: 1;
+
+    int sd_node_level;
 } kdl_tokenizer_t;
 
 typedef struct kdl_token {
     kdl_token_type_e type;
 
+    // fields are filled in depending on type
     wchar_t *string;
     size_t str_len;
     double number;
