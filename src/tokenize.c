@@ -7,14 +7,38 @@ const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
 const char KDL_TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
-void kdl_tokenizer_make(kdl_tokenizer_t *tzr, wchar_t *buffer) {
+kdl_tokenizer_t *kdl_tokenizer_new(size_t buf_size) {
+    kdl_tokenizer_t *tzr = malloc(sizeof(*tzr));
+    kdl_tokenizer_make(tzr, malloc(buf_size));
+
+    return tzr;
+}
+
+void kdl_tokenizer_destroy(kdl_tokenizer_t *tzr) {
+    free(tzr->buf);
+    free(tzr);
+}
+
+kdl_token_t *kdl_token_new(size_t buf_size) {
+    kdl_token_t *token = malloc(sizeof(*token));
+    kdl_token_make(token, malloc(buf_size));
+
+    return token;
+}
+
+void kdl_token_destroy(kdl_token_t *token) {
+    free(token->string);
+    free(token);
+}
+
+void kdl_tokenizer_make(kdl_tokenizer_t *tzr, void *buffer) {
     *tzr = (kdl_tokenizer_t){
         .buf = buffer,
         .expect_node = true
     };
 }
 
-void kdl_token_make(kdl_token_t *token, wchar_t *buffer) {
+void kdl_token_make(kdl_token_t *token, void *buffer) {
     *token = (kdl_token_t){
         .string = buffer
     };

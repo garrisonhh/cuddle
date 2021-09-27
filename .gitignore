@@ -1,2 +1,3 @@
-test/files
-test/bin
+test/files/
+test/bin/
+bin/
