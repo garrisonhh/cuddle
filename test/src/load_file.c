@@ -44,13 +44,18 @@ int main(int argc, char **argv) {
 
     // read and feed
     wchar_t buf[len_buf];
+    int level = 0;
 
     while (wchar_fread(buf, len_buf, file)) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {
-            if (token.node)
-                putwchar(L'\n');
+            if (token.node) {
+                wprintf(L"\n");
+
+                for (int i = 0; i < level; ++i)
+                    wprintf(L"  ");
+            }
 
             switch (token.type) {
             case KDL_TOK_NULL:
@@ -66,7 +71,7 @@ int main(int argc, char **argv) {
 
                 break;
             case KDL_TOK_IDENTIFIER:
-                wprintf(L"(id)%ls", token.string);
+                wprintf(L"%ls", token.string);
 
                 break;
             case KDL_TOK_STRING:
@@ -75,16 +80,23 @@ int main(int argc, char **argv) {
                 break;
             case KDL_TOK_CHILD_BEGIN:
                 putwchar(L'{');
+                ++level;
 
                 break;
             case KDL_TOK_CHILD_END:
+                --level;
+
+                wprintf(L"\n");
+
+                for (int i = 0; i < level; ++i)
+                    wprintf(L"  ");
+
                 putwchar(L'}');
 
                 break;
             }
 
             putwchar(token.property ? L'=' : L' ');
-            fflush(stdout);
         }
     }
 

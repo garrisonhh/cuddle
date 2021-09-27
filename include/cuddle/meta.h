@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <wchar.h>
 
 /*
  * debugging, errors, etc.
@@ -24,6 +25,13 @@
     do {\
         fprintf(stderr, "KDL ERROR: ");\
         fprintf(stderr, __VA_ARGS__);\
+        exit(-1);\
+    } while (0)
+
+#define KDL_WIDE_ERROR(...)\
+    do {\
+        fwprintf(stderr, L"KDL ERROR: ");\
+        fwprintf(stderr, __VA_ARGS__);\
         exit(-1);\
     } while (0)
 

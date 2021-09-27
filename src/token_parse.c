@@ -199,8 +199,6 @@ static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         return true;
     }
 
-    wprintf(L"invalid number: \"%ls\" -> %f\n", tzr->buf, number);
-
     return false;
 }
 
@@ -227,14 +225,11 @@ static void type_characters_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
             return;
         }
 
-        KDL_ERROR("unknown value!!!\n");
+        KDL_WIDE_ERROR(L"unknown value: \"%ls\"\n", tzr->buf);
     }
 }
 
 void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    // reset token
-    token->node = token->property = false;
-
     // find token type and parse
     switch (tzr->last_state) {
     case KDL_SEQ_STRING:
@@ -254,27 +249,29 @@ void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         } else {
             type_characters_token(tzr, token);
 
-            return;
+            break;
         }
 
         break;
     case KDL_SEQ_CHILD_BEGIN:
         token->type = KDL_TOK_CHILD_BEGIN;
 
-        return;
+        break;
     case KDL_SEQ_CHILD_END:
         token->type = KDL_TOK_CHILD_END;
 
-        return;
+        break;
     default:
-        KDL_ERROR("idek %s\n", KDL_TOKENIZER_STATES[tzr->last_state]);
+        KDL_ERROR("wtf is this %s\n", KDL_TOKENIZER_STATES[tzr->last_state]);
     }
 
     // flags
-    if (tzr->expect_node) {
+    if (token->type == KDL_TOK_STRING || token->type == KDL_TOK_IDENTIFIER) {
+        token->node = tzr->expect_node;
         tzr->expect_node = false;
-        token->node = true;
-    } else if (tzr->state == KDL_SEQ_ASSIGNMENT) {
-        token->property = true;
+    } else {
+        token->node = false;
     }
+
+    token->property = tzr->state == KDL_SEQ_ASSIGNMENT;
 }

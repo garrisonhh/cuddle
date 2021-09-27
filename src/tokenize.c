@@ -1,7 +1,6 @@
-#include <math.h>
-
 #include <cuddle/meta.h>
 #include <cuddle/tokenize.h>
+#include "token_parse.h"
 
 #define X(name) #name
 const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
@@ -249,58 +248,41 @@ static void consume_char(kdl_tokenizer_t *tzr) {
  * while (kdl_tok_next()) { [ do something with token... ] }
  *
  * this functions responsibilities are limited to sanitizing the raw token
- * stream from the state machine (processing line break escapes, slashdashes,
- * etc.), and returning fully typed and usable tokens to the user
+ * stream from the state machine (processing line break escapes and slashdashes)
+ * and returning fully typed and usable tokens to the user
  */
-void generate_token(kdl_tokenizer_t *, kdl_token_t *); // in token_parse.c
-
 bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     while (tzr->data_idx < tzr->data_len && tzr->data[tzr->data_idx]) {
         consume_char(tzr);
 
+        // line breaks
+        switch (tzr->last_state) {
+        case KDL_SEQ_CHILD_BEGIN:
+        case KDL_SEQ_CHILD_END:
+            tzr->expect_node = true;
+
+            break;
+        case KDL_SEQ_BREAK:
+            if (tzr->break_escape)
+                tzr->break_escape = false;
+            else
+                tzr->expect_node = true;
+
+            break;
+        case KDL_SEQ_BREAK_ESC:
+            tzr->break_escape = true;
+
+            break;
+        default:
+            break;
+        }
+
+        // tokens
         if (tzr->token_break) {
-            switch (tzr->last_state) {
-            case KDL_SEQ_BREAK:
-                if (tzr->break_escape)
-                    tzr->break_escape = false;
-                else
-                    tzr->expect_node = true;
+            // valid non-slashdashed token; type, parse, and pass
+            generate_token(tzr, token);
 
-                break;
-            case KDL_SEQ_BREAK_ESC:
-                tzr->break_escape = true;
-
-                break;
-            default:
-                // check for slashdashing
-                if (tzr->buf_len >= 2 && tzr->buf[0] == L'/'
-                 && tzr->buf[1] == L'-') {
-                    // begin slashdash comment
-                    if (tzr->expect_node) {
-                        tzr->expect_node = false;
-
-                        KDL_UNIMPL("node slashdash!!!\n");
-                    } else if (tzr->state == KDL_SEQ_ASSIGNMENT) {
-                        tzr->slashdash_prop = true;
-                    }
-
-                    break;
-                } else if (tzr->slashdash_prop) {
-                    // slashdash prop value
-                    tzr->slashdash_prop = false;
-
-                    break;
-                }
-
-                // generate token when called for
-                generate_token(tzr, token);
-
-                // non-KDL_SEQ_BREAK node breaks
-                tzr->expect_node |= token->type == KDL_TOK_CHILD_BEGIN
-                                 || token->type == KDL_TOK_CHILD_END;
-
-                return true;
-            }
+            return true;
         }
     }
 

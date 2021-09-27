@@ -1,5 +1,5 @@
-#ifndef KDL_TOKENS_H
-#define KDL_TOKENS_H
+#ifndef KDL_TOKENIZE_H
+#define KDL_TOKENIZE_H
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -70,8 +70,6 @@ typedef struct kdl_tokenizer {
     // token typing state
     unsigned break_escape: 1;
     unsigned expect_node: 1;
-    unsigned slashdash_node: 1;
-    unsigned slashdash_prop: 1;
 } kdl_tokenizer_t;
 
 typedef struct kdl_token {
