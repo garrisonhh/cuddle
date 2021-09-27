@@ -5,16 +5,6 @@
 
 #include <cuddle/cuddle.h>
 
-// since I can't get fread to work
-bool wchar_fread(wchar_t *buf, size_t len_buf, FILE *file) {
-    char mb_buf[len_buf];
-    size_t n_read = fread(mb_buf, sizeof(mb_buf[0]), len_buf, file);
-
-    mbstowcs(buf, mb_buf, n_read);
-
-    return n_read > 0;
-}
-
 int main(int argc, char **argv) {
     // file stuff
     setlocale(LC_ALL, "C");
@@ -43,10 +33,10 @@ int main(int argc, char **argv) {
     kdl_token_make(&token, tok_buf);
 
     // read and feed
-    wchar_t buf[len_buf];
+    char buf[megabyte];
     int level = 0;
 
-    while (wchar_fread(buf, len_buf, file)) {
+    while (fread(buf, sizeof(buf[0]), len_buf, file)) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {

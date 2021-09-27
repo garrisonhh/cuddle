@@ -20,10 +20,8 @@ void kdl_token_make(kdl_token_t *token, wchar_t *buffer) {
     };
 }
 
-void kdl_tok_feed(kdl_tokenizer_t *tzr, wchar_t *data, size_t length) {
-    tzr->data = data;
-    tzr->data_len = length;
-    tzr->data_idx = 0;
+void kdl_tok_feed(kdl_tokenizer_t *tzr, char *data, size_t length) {
+    kdl_utf8_feed(&tzr->utf8, data, length);
 }
 
 static bool is_whitespace(wchar_t ch) {
@@ -130,7 +128,7 @@ static kdl_tokenizer_state_e detect_next_state(
  * this function's responsibilities are limited exclusively to splitting tokens
  * up through the tokenizer state machine. anything else is out of scope.
  */
-static void consume_char(kdl_tokenizer_t *tzr) {
+static void consume_char(kdl_tokenizer_t *tzr, wchar_t ch) {
     // reset flags sent to tok_next()
     tzr->token_break = false;
 
@@ -140,7 +138,6 @@ static void consume_char(kdl_tokenizer_t *tzr) {
     }
 
     // detect state changes
-    wchar_t ch = tzr->data[tzr->data_idx++];
     kdl_tokenizer_state_e next_state = tzr->state;
     bool force_change = false;
 
@@ -251,7 +248,8 @@ static void consume_char(kdl_tokenizer_t *tzr) {
 
 /*
  * fills in 'token' with data of next token and returns true, or returns false
- * if the current token isn't finished yet. this lets you use the idiom:
+ * if the current token isn't finished yet (needs more data). this lets you use
+ * the idiom:
  *
  * while (kdl_tok_next()) { [ do something with token... ] }
  *
@@ -260,8 +258,10 @@ static void consume_char(kdl_tokenizer_t *tzr) {
  * and returning fully typed and usable tokens to the user
  */
 bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    while (tzr->data_idx < tzr->data_len && tzr->data[tzr->data_idx]) {
-        consume_char(tzr);
+    wchar_t ch;
+
+    while (kdl_utf8_next(&tzr->utf8, &ch) && ch && ch != (wchar_t)WEOF) {
+        consume_char(tzr, ch);
 
         // line break and node slashdash state machine
         switch (tzr->last_state) {

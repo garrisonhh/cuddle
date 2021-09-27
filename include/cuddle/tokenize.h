@@ -5,6 +5,8 @@
 #include <stdbool.h>
 #include <wchar.h>
 
+#include <cuddle/utf8.h>
+
 #define KDL_TOKEN_TYPES_X\
     /* values */\
     X(KDL_TOK_IDENTIFIER),\
@@ -50,8 +52,11 @@ extern const char KDL_TOKENIZER_STATES[][32];
 
 typedef struct kdl_tokenizer {
     // current data
+    /*
     wchar_t *data;
     size_t data_len, data_idx;
+    */
+    kdl_utf8_t utf8;
 
     // token buffer
     wchar_t *buf;
@@ -99,7 +104,8 @@ typedef struct kdl_token {
 void kdl_tokenizer_make(kdl_tokenizer_t *, wchar_t *buffer);
 void kdl_token_make(kdl_token_t *, wchar_t *buffer);
 
-void kdl_tok_feed(kdl_tokenizer_t *, wchar_t *data, size_t length);
+// feed tokenizer a raw multibyte string and it will parse the utf-8
+void kdl_tok_feed(kdl_tokenizer_t *, char *data, size_t length);
 bool kdl_tok_next(kdl_tokenizer_t *, kdl_token_t *);
 
 #endif
