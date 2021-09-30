@@ -7,9 +7,10 @@ const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
 const char KDL_TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
-void kdl_tokenizer_make(kdl_tokenizer_t *tzr, void *buffer) {
+void kdl_tokenizer_make(kdl_tokenizer_t *tzr, void *buffer, size_t buf_size) {
     *tzr = (kdl_tokenizer_t){
         .buf = buffer,
+        .buf_size = buf_size,
         .expect_node = true
     };
 }
@@ -241,8 +242,10 @@ static void consume_char(kdl_tokenizer_t *tzr, wide_t ch) {
         tzr->buf[tzr->buf_len] = tzr->last_char;
         tzr->buf[++tzr->buf_len] = L'\0';
     } else {
-        KDL_ERROR("attempted to overwrite buffer. please supply a larger "
-                  "buffer to kdl_tokenizer_make.\n")
+        KDL_ERROR(
+            "tokenizer tried to write past the end of the supplied buffer. plea"
+            "se supply a larger buffer.\n"
+        );
     }
 
     // store state
