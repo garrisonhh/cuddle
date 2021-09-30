@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <wchar.h>
 
 #include <cuddle/utf8.h>
 
@@ -53,17 +52,17 @@ extern const char KDL_TOKENIZER_STATES[][32];
 typedef struct kdl_tokenizer {
     // current data
     /*
-    wchar_t *data;
+    wide_t *data;
     size_t data_len, data_idx;
     */
     kdl_utf8_t utf8;
 
     // token buffer
-    wchar_t *buf;
+    wide_t *buf;
     size_t buf_len; // this is current length, not total memory length
 
     // parsing state
-    wchar_t last_char; // used for detecting char sequences
+    wide_t last_char; // used for detecting char sequences
     kdl_tokenizer_state_e state, last_state;
 
     int c_comm_level; // for stacked c comments
@@ -86,7 +85,7 @@ typedef struct kdl_token {
     kdl_token_type_e type;
 
     // fields are filled in depending on type
-    wchar_t *string;
+    wide_t *string;
     size_t str_len;
     double number;
     unsigned boolean: 1;

@@ -6,6 +6,12 @@
 #include <cuddle/utf8.h>
 
 int main() {
+    unsigned short x = -1;
+
+    printf("%hu\n", x);
+
+    exit(0);
+
     setlocale(LC_ALL, "en_US.UTF-8");
 
     char str[] = "\u263A\u263A\u263A\n";

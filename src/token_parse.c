@@ -5,11 +5,11 @@
 
 static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     size_t index = 0;
-    wchar_t *trav = tzr->buf + 1;
+    wide_t *trav = tzr->buf + 1;
 
     while (*trav && *trav != L'"') {
         if (*trav == L'\\') {
-            wchar_t ch; // for unicode sequences
+            wide_t ch; // for unicode sequences
 
             ++trav;
 
@@ -75,10 +75,10 @@ static void parse_raw_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     tzr->buf[i] = L'\0';
 
     // copy from after beginning quote
-    wcscpy(token->string, tzr->buf + 1);
+    kdl_utf8_copy(token->string, tzr->buf + 1);
 }
 
-static inline long parse_sign(wchar_t **trav) {
+static inline long parse_sign(wide_t **trav) {
     long sign = **trav == L'-' ? -1 : 1;
 
     *trav += **trav == L'-' || **trav == L'+';
@@ -86,7 +86,7 @@ static inline long parse_sign(wchar_t **trav) {
     return sign;
 }
 
-static long parse_num_base(wchar_t **trav, int base) {
+static long parse_num_base(wide_t **trav, int base) {
     long integral = 0;
 
     while (1) {
@@ -101,7 +101,7 @@ static long parse_num_base(wchar_t **trav, int base) {
     }
 }
 
-static long parse_hex(wchar_t **trav) {
+static long parse_hex(wide_t **trav) {
     long integral = 0;
 
     while (1) {
@@ -123,7 +123,7 @@ static long parse_hex(wchar_t **trav) {
     }
 }
 
-static double parse_dec(wchar_t **trav) {
+static double parse_dec(wide_t **trav) {
     double number = parse_num_base(trav, 10);
 
     // fractional values
@@ -160,7 +160,7 @@ static double parse_dec(wchar_t **trav) {
 
 // returns if number was valid
 static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    wchar_t *trav = tzr->buf;
+    wide_t *trav = tzr->buf;
     double sign = parse_sign(&trav);
     double number;
 
@@ -225,7 +225,8 @@ static void type_characters_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
             return;
         }
 
-        KDL_WIDE_ERROR(L"unknown value: \"%ls\"\n", tzr->buf);
+        // TODO replacement for wprintf here for better debugging
+        KDL_ERROR("encountered an unknown value!");
     }
 }
 
@@ -245,7 +246,8 @@ void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     case KDL_SEQ_CHARACTER:
         if (tzr->state == KDL_SEQ_ASSIGNMENT || tzr->expect_node) {
             token->type = KDL_TOK_IDENTIFIER;
-            wcscpy(token->string, tzr->buf);
+
+            kdl_utf8_copy(token->string, tzr->buf);
         } else {
             type_characters_token(tzr, token);
 

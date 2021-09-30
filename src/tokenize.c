@@ -48,7 +48,7 @@ void kdl_tok_feed(kdl_tokenizer_t *tzr, char *data, size_t length) {
     kdl_utf8_feed(&tzr->utf8, data, length);
 }
 
-static bool is_whitespace(wchar_t ch) {
+static bool is_whitespace(wide_t ch) {
     switch (ch) {
     case 0x0009:
     case 0x0020:
@@ -65,7 +65,7 @@ static bool is_whitespace(wchar_t ch) {
     }
 }
 
-static bool is_newline(wchar_t ch) {
+static bool is_newline(wide_t ch) {
     switch (ch) {
     case 0x000A:
     case 0x000C:
@@ -81,13 +81,13 @@ static bool is_newline(wchar_t ch) {
     }
 }
 
-static inline bool is_break(wchar_t ch) {
-    return is_newline(ch) || ch == L';' || ch == (wchar_t)WEOF;
+static inline bool is_break(wide_t ch) {
+    return is_newline(ch) || ch == L';' || ch == (wide_t)WEOF;
 }
 
 // assumes that tokenizer isn't in a special sequence (like a string or comment)
 static kdl_tokenizer_state_e detect_next_state(
-    kdl_tokenizer_t *tzr, wchar_t ch
+    kdl_tokenizer_t *tzr, wide_t ch
 ) {
     // character classes
     if (is_whitespace(ch))
@@ -152,7 +152,7 @@ static kdl_tokenizer_state_e detect_next_state(
  * this function's responsibilities are limited exclusively to splitting tokens
  * up through the tokenizer state machine. anything else is out of scope.
  */
-static void consume_char(kdl_tokenizer_t *tzr, wchar_t ch) {
+static void consume_char(kdl_tokenizer_t *tzr, wide_t ch) {
     // reset flags sent to tok_next()
     tzr->token_break = false;
 
@@ -282,9 +282,9 @@ static void consume_char(kdl_tokenizer_t *tzr, wchar_t ch) {
  * and returning fully typed and usable tokens to the user
  */
 bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    wchar_t ch;
+    wide_t ch;
 
-    while (kdl_utf8_next(&tzr->utf8, &ch) && ch && ch != (wchar_t)WEOF) {
+    while (kdl_utf8_next(&tzr->utf8, &ch) && ch && ch != (wide_t)WEOF) {
         consume_char(tzr, ch);
 
         // line break and node slashdash state machine
