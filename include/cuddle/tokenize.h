@@ -59,7 +59,7 @@ typedef struct kdl_tokenizer {
 
     // token buffer
     wide_t *buf;
-    size_t buf_len; // this is current length, not total memory length
+    size_t buf_size, buf_len; // buf_len is size of current token
 
     // parsing state
     wide_t last_char; // used for detecting char sequences
@@ -96,20 +96,14 @@ typedef struct kdl_token {
 } kdl_token_t;
 
 /*
- * these are provided as convenience functions for FFI. if you're working in C,
- * please just allocate this stuff on the stack or manage the memory yourself!
- */
-kdl_tokenizer_t *kdl_tokenizer_new(size_t buf_size);
-kdl_token_t *kdl_token_new(size_t buf_size);
-void kdl_tokenizer_destroy(kdl_tokenizer_t *);
-void kdl_token_destroy(kdl_token_t *);
-
-/*
  * buffers are just raw memory. the tokenizer buffer needs to be able to hold
  * the longest raw token component, and the token buffer needs to be able to
  * hold the longest processed string.
+ *
+ * only the tokenizer checks to ensure no overwriting, but if you allocate the
+ * token buffer to be the same size no memory errors will happen.
  */
-void kdl_tokenizer_make(kdl_tokenizer_t *, void *buffer);
+void kdl_tokenizer_make(kdl_tokenizer_t *, void *buffer, size_t buf_size);
 void kdl_token_make(kdl_token_t *, void *buffer);
 
 // feed tokenizer a raw multibyte string and it will parse the utf-8

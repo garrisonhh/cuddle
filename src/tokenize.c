@@ -7,30 +7,6 @@ const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
 const char KDL_TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
-kdl_tokenizer_t *kdl_tokenizer_new(size_t buf_size) {
-    kdl_tokenizer_t *tzr = malloc(sizeof(*tzr));
-    kdl_tokenizer_make(tzr, malloc(buf_size));
-
-    return tzr;
-}
-
-void kdl_tokenizer_destroy(kdl_tokenizer_t *tzr) {
-    free(tzr->buf);
-    free(tzr);
-}
-
-kdl_token_t *kdl_token_new(size_t buf_size) {
-    kdl_token_t *token = malloc(sizeof(*token));
-    kdl_token_make(token, malloc(buf_size));
-
-    return token;
-}
-
-void kdl_token_destroy(kdl_token_t *token) {
-    free(token->string);
-    free(token);
-}
-
 void kdl_tokenizer_make(kdl_tokenizer_t *tzr, void *buffer) {
     *tzr = (kdl_tokenizer_t){
         .buf = buffer,
@@ -261,8 +237,13 @@ static void consume_char(kdl_tokenizer_t *tzr, wide_t ch) {
     }
 
     // store token
-    tzr->buf[tzr->buf_len] = tzr->last_char;
-    tzr->buf[++tzr->buf_len] = L'\0';
+    if (tzr->buf_len < (tzr->buf_size - 1)) {
+        tzr->buf[tzr->buf_len] = tzr->last_char;
+        tzr->buf[++tzr->buf_len] = L'\0';
+    } else {
+        KDL_ERROR("attempted to overwrite buffer. please supply a larger "
+                  "buffer to kdl_tokenizer_make.\n")
+    }
 
     // store state
     tzr->last_state = tzr->state;
