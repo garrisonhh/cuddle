@@ -1,5 +1,5 @@
-#ifndef KDL_MEMORY_HANDLER_H
-#define KDL_MEMORY_HANDLER_H
+#ifndef KDL_HTABLE_H
+#define KDL_HTABLE_H
 
 #include <stdbool.h>
 
@@ -8,7 +8,7 @@
 /*
  * a combined handle table and allocator
  */
-typedef struct htable {
+typedef struct kdl_htable {
     // memory is separated into equally sized blocks
     char *blocks;
     size_t block_size, num_blocks;
@@ -20,24 +20,24 @@ typedef struct htable {
     // if num_reusable is 0, just allocate max_used (the next block up)
     unsigned short reusable[HTABLE_SIZE];
     size_t num_reusable, max_used;
-} htable_t;
+} kdl_htable_t;
 
-typedef struct href {
+typedef struct kdl_href {
     unsigned short index, count;
-} href_t;
+} kdl_href_t;
 
-void htable_make(
-    htable_t *, void *blocks, size_t block_size, size_t num_blocks
+void kdl_htable_make(
+    kdl_htable_t *, void *blocks, size_t block_size, size_t num_blocks
 );
 
-void *htable_alloc(htable_t *, href_t *);
+void *kdl_htable_alloc(kdl_htable_t *, kdl_href_t *, size_t size);
 
-static inline void htable_free(htable_t *table, href_t *ref) {
+static inline void kdl_htable_free(kdl_htable_t *table, kdl_href_t *ref) {
     ++table->counts[ref->index];
     table->reusable[table->num_reusable++] = ref->index;
 }
 
-static inline void *htable_get(htable_t *table, href_t *ref) {
+static inline void *kdl_htable_get(kdl_htable_t *table, kdl_href_t *ref) {
     return (table->counts[ref->index] == ref->count)
         ? table->blocks + ref->index * table->block_size
         : NULL;
