@@ -81,8 +81,8 @@ typedef struct kdl_token {
     kdl_token_type_e type;
 
     // fields are filled in depending on type
-    kdl_u8ch_t *string;
-    size_t str_len;
+    char *string;
+    size_t /* TODO str_size, */ str_len; // size is allocated; len is actual length
     double number;
     unsigned boolean: 1;
 
@@ -100,7 +100,7 @@ typedef struct kdl_token {
  * token buffer to be the same size no memory errors will happen.
  */
 void kdl_tokenizer_make(kdl_tokenizer_t *, kdl_u8ch_t *buffer, size_t buf_size);
-void kdl_token_make(kdl_token_t *, kdl_u8ch_t *buffer);
+void kdl_token_make(kdl_token_t *, char *buffer);
 
 // feed tokenizer a raw multibyte string and it will parse the utf-8
 void kdl_tok_feed(kdl_tokenizer_t *, char *data, size_t length);

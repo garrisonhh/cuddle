@@ -15,7 +15,7 @@ void kdl_tokenizer_make(kdl_tokenizer_t *tzr, kdl_u8ch_t *buffer, size_t buf_siz
     };
 }
 
-void kdl_token_make(kdl_token_t *token, kdl_u8ch_t *buffer) {
+void kdl_token_make(kdl_token_t *token, char *buffer) {
     *token = (kdl_token_t){
         .string = buffer
     };

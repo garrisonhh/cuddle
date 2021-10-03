@@ -3,35 +3,59 @@
 #include <cuddle/meta.h>
 #include <cuddle/tokenize.h>
 
-static void append_u8ch() {
-    ;
+// TODO str_size and check
+static inline void append_ch(kdl_token_t *token, char ch) {
+    token->string[token->str_len++] = ch;
+}
+
+// TODO str_size and check
+static void append_u8ch(kdl_token_t *token, kdl_u8ch_t ch) {
+    if (ch < 0x80) {
+        append_ch(token, ch);
+    } else {
+        char decoded[4];
+        size_t size;
+
+        kdl_utf8_to_mbs(ch, decoded, &size);
+
+        for (size_t i = 0; i < size; ++i)
+            token->string[token->str_len++] = decoded[i];
+    }
+}
+
+static void copy_u8str(kdl_token_t *token, kdl_u8ch_t *u8str) {
+    token->str_len = 0;
+
+    while (*u8str)
+        append_u8ch(token, *u8str++);
+
+    token->string[token->str_len] = 0;
 }
 
 static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    size_t index = 0;
     kdl_u8ch_t *trav = tzr->buf + 1;
+
+    token->str_len = 0;
 
     while (*trav && *trav != L'"') {
         if (*trav == L'\\') {
-            kdl_u8ch_t ch; // for unicode sequences
-
             ++trav;
 
             // handle string escape
             switch (*trav) {
-#define ESC_CASE(ch, esc) case ch: token->string[index++] = esc; break
-            ESC_CASE(L'n', L'\n');
-            ESC_CASE(L'r', L'\r');
-            ESC_CASE(L't', L'\t');
-            ESC_CASE(L'\\', L'\\');
-            ESC_CASE(L'/', L'/');
-            ESC_CASE(L'"', L'"');
-            ESC_CASE(L'b', L'\b');
-            ESC_CASE(L'f', L'\f');
+#define ESC_CASE(ch, esc) case ch: append_ch(token, esc); break
+            ESC_CASE(L'n', '\n');
+            ESC_CASE(L'r', '\r');
+            ESC_CASE(L't', '\t');
+            ESC_CASE(L'\\', '\\');
+            ESC_CASE(L'/', '/');
+            ESC_CASE(L'"', '"');
+            ESC_CASE(L'b', '\b');
+            ESC_CASE(L'f', '\f');
 #undef ESC_CASE
-            case L'u':
+            case L'u':;
                 // parse unicode escape sequence
-                ch = 0;
+                kdl_u8ch_t ch = 0;
 
                 for (size_t i = 0; i < 6; ++i) {
                     ++trav;
@@ -51,22 +75,22 @@ static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
                     }
                 }
 
-                token->string[index++] = ch;
+                append_u8ch(token, ch);
 
                 break;
             default:
-                token->string[index++] = *trav;
+                append_u8ch(token, *trav);
 
                 break;
             }
         } else {
-            token->string[index++] = *trav;
+            append_u8ch(token, *trav);
         }
 
         ++trav;
     }
 
-    token->string[index] = L'\0';
+    token->string[token->str_len] = 0;
 }
 
 static void parse_raw_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
@@ -79,7 +103,7 @@ static void parse_raw_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     tzr->buf[i] = L'\0';
 
     // copy from after beginning quote
-    kdl_utf8_copy(token->string, tzr->buf + 1);
+    copy_u8str(token, tzr->buf + 1);
 }
 
 static inline long parse_sign(kdl_u8ch_t **trav) {
@@ -251,7 +275,8 @@ void generate_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
         if (tzr->state == KDL_SEQ_ASSIGNMENT || tzr->expect_node) {
             token->type = KDL_TOK_IDENTIFIER;
 
-            kdl_utf8_copy(token->string, tzr->buf);
+            // copy identifier
+            copy_u8str(token, tzr->buf);
         } else {
             type_characters_token(tzr, token);
 

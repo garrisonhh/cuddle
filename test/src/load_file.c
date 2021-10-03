@@ -1,14 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
-#include <locale.h>
 
 #include <cuddle/cuddle.h>
 
 int main(int argc, char **argv) {
     // file stuff
-    setlocale(LC_ALL, "C");
-
     if (argc != 2) {
         fprintf(stderr, "please supply a file path as first argument.\n");
         exit(-1);
@@ -26,8 +22,9 @@ int main(int argc, char **argv) {
     kdl_token_t token;
 
     const size_t megabyte = 1024 * 1024;
-    const size_t len_buf = megabyte / sizeof(wchar_t);
-    wchar_t tzr_buf[len_buf], tok_buf[len_buf];
+    const size_t len_buf = megabyte / sizeof(kdl_u8ch_t);
+    kdl_u8ch_t tzr_buf[len_buf];
+    char tok_buf[megabyte];
 
     kdl_tokenizer_make(&tzr, tzr_buf, sizeof(tzr_buf));
     kdl_token_make(&token, tok_buf);
@@ -40,53 +37,55 @@ int main(int argc, char **argv) {
         kdl_tok_feed(&tzr, buf, len_buf);
 
         while (kdl_tok_next(&tzr, &token)) {
+#if 1
             if (token.node) {
-                wprintf(L"\n");
+                putchar('\n');
 
                 for (int i = 0; i < level; ++i)
-                    wprintf(L"  ");
+                    printf("  ");
             }
 
             switch (token.type) {
             case KDL_TOK_NULL:
-                wprintf(L"null");
+                printf("null");
 
                 break;
             case KDL_TOK_BOOL:
-                wprintf(token.boolean ? L"true" : L"false");
+                printf(token.boolean ? "true" : "false");
 
                 break;
             case KDL_TOK_NUMBER:
-                wprintf(L"%f", token.number);
+                printf("%f", token.number);
 
                 break;
             case KDL_TOK_IDENTIFIER:
-                wprintf(L"%ls", token.string);
+                printf("%s", token.string);
 
                 break;
             case KDL_TOK_STRING:
-                wprintf(L"\"%ls\"", token.string);
+                printf("\"%s\"", token.string);
 
                 break;
             case KDL_TOK_CHILD_BEGIN:
-                putwchar(L'{');
+                putchar('{');
                 ++level;
 
                 break;
             case KDL_TOK_CHILD_END:
                 --level;
 
-                wprintf(L"\n");
+                printf("\n");
 
                 for (int i = 0; i < level; ++i)
-                    wprintf(L"  ");
+                    printf("  ");
 
-                putwchar(L'}');
+                putchar('}');
 
                 break;
             }
 
-            putwchar(token.property ? L'=' : L' ');
+            putchar(token.property ? '=' : ' ');
+#endif
         }
     }
 
