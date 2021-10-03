@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <cuddle/utf8.h>
 
 void kdl_utf8_make(kdl_utf8_t *state) {

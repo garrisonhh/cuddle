@@ -28,6 +28,7 @@ typedef struct kdl_value {
 typedef struct kdl_prop {
     char *id;
     kdl_href_t id_ref;
+    bool id_is_identifier;
 
     kdl_value_t value;
 } kdl_prop_t;
@@ -65,9 +66,7 @@ typedef struct kdl_document_buffers {
 void kdl_document_make(kdl_document_t *, kdl_document_buffers_t *);
 void kdl_document_load_file(kdl_document_t *, const char *filename);
 
-#ifdef DEBUG
 void kdl_document_debug(kdl_document_t *);
-#endif
 
 #endif
 

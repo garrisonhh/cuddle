@@ -152,6 +152,7 @@ void kdl_document_load_file(kdl_document_t *doc, const char *filename) {
                     doc, token.string, token.str_len, &prop->id_ref
                 );
 
+                prop->id_is_identifier = token.type == KDL_TOK_IDENTIFIER;
                 await_prop = true;
             } else {
                 switch (token.type) {
@@ -184,7 +185,6 @@ void kdl_document_load_file(kdl_document_t *doc, const char *filename) {
     fclose(fp);
 }
 
-#ifdef DEBUG
 static inline void print_level(int level) {
     printf("%*s", level * 4, "");
 }
@@ -228,10 +228,16 @@ static void print_node(kdl_node_t *node, int level) {
     }
 
     for (size_t i = 0; i < node->num_props; ++i) {
-        kdl_serialize_string(buf, ARRAY_SIZE(buf), node->props[i].id);
-        printf("%s=", buf);
+        kdl_prop_t *prop = &node->props[i];
 
-        serialize_value(buf, ARRAY_SIZE(buf), &node->props[i].value);
+        if (prop->id_is_identifier) {
+            printf("%s=", prop->id);
+        } else {
+            kdl_serialize_string(buf, ARRAY_SIZE(buf), prop->id);
+            printf("%s=", buf);
+        }
+
+        serialize_value(buf, ARRAY_SIZE(buf), &prop->value);
         printf("%s ", buf);
     }
 
@@ -241,6 +247,7 @@ static void print_node(kdl_node_t *node, int level) {
         for (size_t i = 0; i < node->num_children; ++i)
             print_node(node->children[i], level + 1);
 
+        print_level(level);
         putchar('}');
     }
 
@@ -253,4 +260,3 @@ void kdl_document_debug(kdl_document_t *doc) {
         putchar('\n');
     }
 }
-#endif

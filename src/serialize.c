@@ -34,16 +34,16 @@ void kdl_serialize_string(char *buf, size_t buf_size, char *string) {
 void kdl_serialize_number(char *buf, size_t buf_size, double number) {
     if ((double)(long)number == number) {
         // integer representable
-        sprintf(buf, "%ld", (long)number);
+        snprintf(buf, buf_size, "%ld", (long)number);
     } else {
-        sprintf(buf, "%f", number);
+        snprintf(buf, buf_size, "%f", number);
     }
 }
 
 void kdl_serialize_bool(char *buf, size_t buf_size, bool boolean) {
-    sprintf(buf, boolean ? "true" : "false");
+    snprintf(buf, buf_size, boolean ? "true" : "false");
 }
 
 void kdl_serialize_null(char *buf, size_t buf_size) {
-    sprintf(buf, "null");
+    snprintf(buf, buf_size, "null");
 }

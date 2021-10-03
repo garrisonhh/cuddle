@@ -1,7 +1,7 @@
 #include <math.h>
 
 #include <cuddle/meta.h>
-#include <cuddle/tokenize.h>
+#include <cuddle/cuddle.h>
 
 // TODO str_size and check
 static inline void append_ch(kdl_token_t *token, char ch) {
@@ -253,8 +253,7 @@ static void type_characters_token(kdl_tokenizer_t *tzr, kdl_token_t *token) {
             return;
         }
 
-        // TODO replacement for wprintf here for better debugging
-        KDL_ERROR("encountered an unknown value!");
+        KDL_ERROR("encountered an unknown value!\n");
     }
 }
 

@@ -21,16 +21,12 @@ void *kdl_htable_alloc(kdl_htable_t *table, kdl_href_t *ref, size_t size) {
         );
     }
 
-    if (table->num_reusable) {
-        // reuse old blocks
+    if (table->num_reusable) // reuse a block
         ref->index = table->reusable[--table->num_reusable];
-    } else {
-        // use a new block
-        if (table->max_used == table->num_blocks)
-            return NULL;
-
+    else if (table->max_used == table->num_blocks)
+        KDL_ERROR("tried to alloc a new block but none were left.\n");
+    else // use a new block
         ref->index = table->max_used++;
-    }
 
     ref->count = ++table->counts[ref->index];
 
