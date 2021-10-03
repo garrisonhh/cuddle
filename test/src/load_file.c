@@ -30,11 +30,11 @@ int main(int argc, char **argv) {
     kdl_token_make(&token, tok_buf);
 
     // read and feed
-    char buf[megabyte];
+    char read_buf[megabyte], ser_buf[megabyte];
     int level = 0;
 
-    while (fread(buf, sizeof(buf[0]), len_buf, file)) {
-        kdl_tok_feed(&tzr, buf, len_buf);
+    while (fread(read_buf, sizeof(read_buf[0]), len_buf, file)) {
+        kdl_tok_feed(&tzr, read_buf, megabyte);
 
         while (kdl_tok_next(&tzr, &token)) {
 #if 1
@@ -55,7 +55,8 @@ int main(int argc, char **argv) {
 
                 break;
             case KDL_TOK_NUMBER:
-                printf("%f", token.number);
+                kdl_serialize_number(ser_buf, megabyte, token.number);
+                printf(ser_buf);
 
                 break;
             case KDL_TOK_IDENTIFIER:
@@ -63,7 +64,8 @@ int main(int argc, char **argv) {
 
                 break;
             case KDL_TOK_STRING:
-                printf("\"%s\"", token.string);
+                kdl_serialize_string(ser_buf, megabyte, token.string);
+                printf("\"%s\"", ser_buf);
 
                 break;
             case KDL_TOK_CHILD_BEGIN:
