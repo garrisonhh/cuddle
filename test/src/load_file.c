@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     kdl_u8ch_t tzr_buf[len_buf];
     char tok_buf[megabyte];
 
-    kdl_tokenizer_make(&tzr, tzr_buf, sizeof(tzr_buf));
+    kdl_tokenizer_make(&tzr, tzr_buf, len_buf);
     kdl_token_make(&token, tok_buf);
 
     // read and feed

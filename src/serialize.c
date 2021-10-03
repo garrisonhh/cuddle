@@ -5,6 +5,8 @@
 
 // TODO I don't think this will handle multibyte chars properly
 void kdl_serialize_string(char *buf, size_t buf_size, char *string) {
+    *buf++ = '"';
+
     while (*string) {
         switch (*string) {
 #define ESC_CASE(escape, write)\
@@ -25,6 +27,7 @@ void kdl_serialize_string(char *buf, size_t buf_size, char *string) {
         ++string;
     }
 
+    *buf++ = '"';
     *buf = 0;
 }
 

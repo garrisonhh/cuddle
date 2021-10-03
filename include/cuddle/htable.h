@@ -8,7 +8,8 @@
 #endif
 
 /*
- * a combined handle table and allocator
+ * a "memory resource" which manages blocks of memory using a handle table and
+ * weak references
  */
 typedef struct kdl_htable {
     // memory is separated into equally sized blocks
@@ -34,11 +35,17 @@ void kdl_htable_make(
 
 void *kdl_htable_alloc(kdl_htable_t *, kdl_href_t *, size_t size);
 
+// there is no reason you can't reuse a handle table, just clear() it
+static inline void kdl_htable_clear(kdl_htable_t *table) {
+    kdl_htable_make(table, table->blocks, table->block_size, table->num_blocks);
+}
+
 static inline void kdl_htable_free(kdl_htable_t *table, kdl_href_t *ref) {
     ++table->counts[ref->index];
     table->reusable[table->num_reusable++] = ref->index;
 }
 
+// gets the actual pointer to a block of data given a reference
 static inline void *kdl_htable_get(kdl_htable_t *table, kdl_href_t *ref) {
     return (table->counts[ref->index] == ref->count)
         ? table->blocks + ref->index * table->block_size
