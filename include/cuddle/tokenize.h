@@ -51,18 +51,14 @@ extern const char KDL_TOKENIZER_STATES[][32];
 
 typedef struct kdl_tokenizer {
     // current data
-    /*
-    wide_t *data;
-    size_t data_len, data_idx;
-    */
     kdl_utf8_t utf8;
 
     // token buffer
-    wide_t *buf;
+    kdl_u8ch_t *buf;
     size_t buf_size, buf_len; // buf_len is size of current token
 
     // parsing state
-    wide_t last_char; // used for detecting char sequences
+    kdl_u8ch_t last_char; // used for detecting char sequences
     kdl_tokenizer_state_e state, last_state;
 
     int c_comm_level; // for stacked c comments
@@ -85,7 +81,7 @@ typedef struct kdl_token {
     kdl_token_type_e type;
 
     // fields are filled in depending on type
-    wide_t *string;
+    kdl_u8ch_t *string;
     size_t str_len;
     double number;
     unsigned boolean: 1;
@@ -103,8 +99,8 @@ typedef struct kdl_token {
  * only the tokenizer checks to ensure no overwriting, but if you allocate the
  * token buffer to be the same size no memory errors will happen.
  */
-void kdl_tokenizer_make(kdl_tokenizer_t *, wide_t *buffer, size_t buf_size);
-void kdl_token_make(kdl_token_t *, wide_t *buffer);
+void kdl_tokenizer_make(kdl_tokenizer_t *, kdl_u8ch_t *buffer, size_t buf_size);
+void kdl_token_make(kdl_token_t *, kdl_u8ch_t *buffer);
 
 // feed tokenizer a raw multibyte string and it will parse the utf-8
 void kdl_tok_feed(kdl_tokenizer_t *, char *data, size_t length);

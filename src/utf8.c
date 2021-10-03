@@ -10,8 +10,8 @@ void kdl_utf8_feed(kdl_utf8_t *state, char *data, size_t length) {
     state->data_idx = 0;
 }
 
-bool kdl_utf8_next(kdl_utf8_t *state, wide_t *out_ch) {
-    wide_t ch;
+bool kdl_utf8_next(kdl_utf8_t *state, kdl_u8ch_t *out_ch) {
+    kdl_u8ch_t ch;
     int mb_bytes;
 
     if (state->left_bytes) {
@@ -21,7 +21,7 @@ bool kdl_utf8_next(kdl_utf8_t *state, wide_t *out_ch) {
         state->left_bytes = 0;
     } else {
         // parse first byte
-        wide_t current = state->data[state->data_idx++];
+        kdl_u8ch_t current = state->data[state->data_idx++];
 
         if (current < 0x80) {
             mb_bytes = 0;
@@ -57,13 +57,13 @@ bool kdl_utf8_next(kdl_utf8_t *state, wide_t *out_ch) {
     return true;
 }
 
-void kdl_utf8_copy(wide_t *dst, wide_t *src) {
+void kdl_utf8_copy(kdl_u8ch_t *dst, kdl_u8ch_t *src) {
     while ((*dst++ = *src++))
         ;
 }
 
 // writes results to dst
-void kdl_utf8_to_mbs(wide_t ch, char dst[4], size_t *out_bytes) {
+void kdl_utf8_to_mbs(kdl_u8ch_t ch, char dst[4], size_t *out_bytes) {
     if (ch < 0x80) {
         dst[0] = ch;
         *out_bytes = 1;

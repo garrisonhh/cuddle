@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <wchar.h>
-#include <locale.h>
 
 #include <cuddle/utf8.h>
 
@@ -19,13 +17,13 @@ void print_mbstr(char *str) {
 int main() {
     kdl_utf8_t utf8;
     char text[] = "Kat Marchán <kzm@zkat.tech>", buf[256];
-    wide_t wtext[256] = {0};
+    kdl_u8ch_t wtext[256] = {0};
     
     kdl_utf8_make(&utf8);
     kdl_utf8_feed(&utf8, text, ARRAY_SIZE(text));
 
     // encode and decode
-    wide_t *trav = wtext;
+    kdl_u8ch_t *trav = wtext;
 
     while (kdl_utf8_next(&utf8, trav++))
         ;

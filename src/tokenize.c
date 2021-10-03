@@ -7,7 +7,7 @@ const char KDL_TOKEN_TYPES[][32] = { KDL_TOKEN_TYPES_X };
 const char KDL_TOKENIZER_STATES[][32] = { KDL_TOKENIZER_STATES_X };
 #undef X
 
-void kdl_tokenizer_make(kdl_tokenizer_t *tzr, wide_t *buffer, size_t buf_size) {
+void kdl_tokenizer_make(kdl_tokenizer_t *tzr, kdl_u8ch_t *buffer, size_t buf_size) {
     *tzr = (kdl_tokenizer_t){
         .buf = buffer,
         .buf_size = buf_size,
@@ -15,7 +15,7 @@ void kdl_tokenizer_make(kdl_tokenizer_t *tzr, wide_t *buffer, size_t buf_size) {
     };
 }
 
-void kdl_token_make(kdl_token_t *token, wide_t *buffer) {
+void kdl_token_make(kdl_token_t *token, kdl_u8ch_t *buffer) {
     *token = (kdl_token_t){
         .string = buffer
     };
@@ -25,7 +25,7 @@ void kdl_tok_feed(kdl_tokenizer_t *tzr, char *data, size_t length) {
     kdl_utf8_feed(&tzr->utf8, data, length);
 }
 
-static bool is_whitespace(wide_t ch) {
+static bool is_whitespace(kdl_u8ch_t ch) {
     switch (ch) {
     case 0x0009:
     case 0x0020:
@@ -42,7 +42,7 @@ static bool is_whitespace(wide_t ch) {
     }
 }
 
-static bool is_newline(wide_t ch) {
+static bool is_newline(kdl_u8ch_t ch) {
     switch (ch) {
     case 0x000A:
     case 0x000C:
@@ -58,13 +58,13 @@ static bool is_newline(wide_t ch) {
     }
 }
 
-static inline bool is_break(wide_t ch) {
-    return is_newline(ch) || ch == L';' || ch == (wide_t)WEOF;
+static inline bool is_break(kdl_u8ch_t ch) {
+    return is_newline(ch) || ch == L';' || ch == (kdl_u8ch_t)WEOF;
 }
 
 // assumes that tokenizer isn't in a special sequence (like a string or comment)
 static kdl_tokenizer_state_e detect_next_state(
-    kdl_tokenizer_t *tzr, wide_t ch
+    kdl_tokenizer_t *tzr, kdl_u8ch_t ch
 ) {
     // character classes
     if (is_whitespace(ch))
@@ -129,7 +129,7 @@ static kdl_tokenizer_state_e detect_next_state(
  * this function's responsibilities are limited exclusively to splitting tokens
  * up through the tokenizer state machine. anything else is out of scope.
  */
-static void consume_char(kdl_tokenizer_t *tzr, wide_t ch) {
+static void consume_char(kdl_tokenizer_t *tzr, kdl_u8ch_t ch) {
     // reset flags sent to tok_next()
     tzr->token_break = false;
 
@@ -266,9 +266,9 @@ static void consume_char(kdl_tokenizer_t *tzr, wide_t ch) {
  * and returning fully typed and usable tokens to the user
  */
 bool kdl_tok_next(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    wide_t ch;
+    kdl_u8ch_t ch;
 
-    while (kdl_utf8_next(&tzr->utf8, &ch) && ch && ch != (wide_t)WEOF) {
+    while (kdl_utf8_next(&tzr->utf8, &ch) && ch && ch != (kdl_u8ch_t)WEOF) {
         consume_char(tzr, ch);
 
         // line break and node slashdash state machine

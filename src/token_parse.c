@@ -3,13 +3,17 @@
 #include <cuddle/meta.h>
 #include <cuddle/tokenize.h>
 
+static void append_u8ch() {
+    ;
+}
+
 static void parse_escaped_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     size_t index = 0;
-    wide_t *trav = tzr->buf + 1;
+    kdl_u8ch_t *trav = tzr->buf + 1;
 
     while (*trav && *trav != L'"') {
         if (*trav == L'\\') {
-            wide_t ch; // for unicode sequences
+            kdl_u8ch_t ch; // for unicode sequences
 
             ++trav;
 
@@ -78,7 +82,7 @@ static void parse_raw_string(kdl_tokenizer_t *tzr, kdl_token_t *token) {
     kdl_utf8_copy(token->string, tzr->buf + 1);
 }
 
-static inline long parse_sign(wide_t **trav) {
+static inline long parse_sign(kdl_u8ch_t **trav) {
     long sign = **trav == L'-' ? -1 : 1;
 
     *trav += **trav == L'-' || **trav == L'+';
@@ -86,7 +90,7 @@ static inline long parse_sign(wide_t **trav) {
     return sign;
 }
 
-static long parse_num_base(wide_t **trav, int base) {
+static long parse_num_base(kdl_u8ch_t **trav, int base) {
     long integral = 0;
 
     while (1) {
@@ -101,7 +105,7 @@ static long parse_num_base(wide_t **trav, int base) {
     }
 }
 
-static long parse_hex(wide_t **trav) {
+static long parse_hex(kdl_u8ch_t **trav) {
     long integral = 0;
 
     while (1) {
@@ -123,7 +127,7 @@ static long parse_hex(wide_t **trav) {
     }
 }
 
-static double parse_dec(wide_t **trav) {
+static double parse_dec(kdl_u8ch_t **trav) {
     double number = parse_num_base(trav, 10);
 
     // fractional values
@@ -160,7 +164,7 @@ static double parse_dec(wide_t **trav) {
 
 // returns if number was valid
 static bool parse_number(kdl_tokenizer_t *tzr, kdl_token_t *token) {
-    wide_t *trav = tzr->buf;
+    kdl_u8ch_t *trav = tzr->buf;
     double sign = parse_sign(&trav);
     double number;
 
