@@ -103,8 +103,8 @@ typedef struct kdl_token {
  * only the tokenizer checks to ensure no overwriting, but if you allocate the
  * token buffer to be the same size no memory errors will happen.
  */
-void kdl_tokenizer_make(kdl_tokenizer_t *, void *buffer, size_t buf_size);
-void kdl_token_make(kdl_token_t *, void *buffer);
+void kdl_tokenizer_make(kdl_tokenizer_t *, wide_t *buffer, size_t buf_size);
+void kdl_token_make(kdl_token_t *, wide_t *buffer);
 
 // feed tokenizer a raw multibyte string and it will parse the utf-8
 void kdl_tok_feed(kdl_tokenizer_t *, char *data, size_t length);

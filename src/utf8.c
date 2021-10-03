@@ -25,7 +25,7 @@ bool kdl_utf8_next(kdl_utf8_t *state, wide_t *out_ch) {
 
         if (current < 0x80) {
             mb_bytes = 0;
-            ch = current & 0x7F;
+            ch = current;
         } else if (current < 0xE0) {
             mb_bytes = 1;
             ch = current & 0x1F;
@@ -60,4 +60,26 @@ bool kdl_utf8_next(kdl_utf8_t *state, wide_t *out_ch) {
 void kdl_utf8_copy(wide_t *dst, wide_t *src) {
     while ((*dst++ = *src++))
         ;
+}
+
+// writes results to dst
+void kdl_utf8_to_mbs(wide_t ch, char dst[4], size_t *out_bytes) {
+    if (ch < 0x80) {
+        dst[0] = ch;
+        *out_bytes = 1;
+    } else if (ch < 0x800) {
+        dst[0] = (ch >> 6) | 0xC0;
+        *out_bytes = 2;
+    } else if (ch < 0x10000) {
+        dst[0] = (ch >> 12) | 0xE0;
+        *out_bytes = 3;
+    } else {
+        dst[0] = (ch >> 18) | 0xF0;
+        *out_bytes = 4;
+    }
+
+    for (size_t i = *out_bytes - 1; i > 0; --i) {
+        dst[i] = (ch & 0x3F) | 0x80;
+        ch >>= 6;
+    }
 }

@@ -3,12 +3,11 @@
 
 #include <stddef.h>
 #include <stdbool.h>
-#include <stdint.h>
 
-typedef int32_t wide_t;
+typedef int wide_t;
 
 #ifndef WEOF
-#define WEOF (-1)
+#define WEOF ((wide_t)-1)
 #endif
 
 // utf8 parsing state
@@ -36,7 +35,7 @@ bool kdl_utf8_next(kdl_utf8_t *, wide_t *out_ch);
 /*
  * utf8 string utilities
  */
-
 void kdl_utf8_copy(wide_t *dst, wide_t *src);
+void kdl_utf8_to_mbs(wide_t ch, char dst[4], size_t *out_bytes);
 
 #endif

@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
     const size_t len_buf = megabyte / sizeof(wchar_t);
     wchar_t tzr_buf[len_buf], tok_buf[len_buf];
 
-    kdl_tokenizer_make(&tzr, tzr_buf);
+    kdl_tokenizer_make(&tzr, tzr_buf, sizeof(tzr_buf));
     kdl_token_make(&token, tok_buf);
 
     // read and feed
