@@ -14,9 +14,10 @@ void kdl_serialize_string(char *buf, size_t buf_size, char *string) {
         ESC_CASE('\n', 'n');
         ESC_CASE('\r', 'r');
         ESC_CASE('\t', 't');
-        ESC_CASE('"', '\"');
         ESC_CASE('\b', 'b');
         ESC_CASE('\f', 'f');
+        ESC_CASE('\\', '\\');
+        ESC_CASE('"', '\"');
 #undef ESC_CASE
         default:
             *buf++ = *string;

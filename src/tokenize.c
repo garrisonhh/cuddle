@@ -175,12 +175,12 @@ static void consume_char(kdl_tokenizer_t *tzr, kdl_u8ch_t ch) {
 
             break;
         case KDL_SEQ_STRING:
-            tzr->force_detect = ch == L'"';
+            tzr->force_detect = ch == L'"' && tzr->last_char != L'\\';
 
             break;
         case KDL_SEQ_RAW_STR:
             // await matching '#' sequence
-            if (ch == L'"') {
+            if (ch == L'"' && tzr->last_char != L'\\') {
                 tzr->raw_current = 1;
             } else if (tzr->raw_current && ch == L'#') {
                 ++tzr->raw_current;

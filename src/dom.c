@@ -255,8 +255,6 @@ static void print_node(kdl_node_t *node, int level) {
 }
 
 void kdl_document_debug(kdl_document_t *doc) {
-    for (size_t i = 0; i < doc->num_nodes; ++i) {
+    for (size_t i = 0; i < doc->num_nodes; ++i)
         print_node(doc->nodes[i], 0);
-        putchar('\n');
-    }
 }
